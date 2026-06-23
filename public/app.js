@@ -6,6 +6,8 @@ const healthEl = document.querySelector('#health');
 const systemPanelEl = document.querySelector('#system-panel');
 const aria2StatusEl = document.querySelector('#aria2-status');
 const aria2CommandEl = document.querySelector('#aria2-command');
+const aria2InstallStatusEl = document.querySelector('#aria2-install-status');
+const installAria2Btn = document.querySelector('#install-aria2-btn');
 const tokenPanelEl = document.querySelector('#token-panel');
 const tokenForm = document.querySelector('#token-form');
 const tokenStatusEl = document.querySelector('#token-status');
@@ -70,6 +72,12 @@ function renderAria2Status(status) {
     systemPanelEl.classList.add('hidden');
     aria2StatusEl.textContent = status.version || 'aria2c installed';
     aria2CommandEl.textContent = '';
+    aria2InstallStatusEl.textContent = '';
+    aria2InstallStatusEl.className = 'system-status';
+    if (installAria2Btn) {
+      installAria2Btn.disabled = false;
+      installAria2Btn.textContent = 'Install aria2';
+    }
     return;
   }
   systemPanelEl.classList.remove('hidden');
@@ -438,13 +446,34 @@ document.addEventListener('click', async (event) => {
   }
 
   if (action === 'install-aria2') {
+    const btn = target;
+    const setBusy = (busy) => {
+      if (!installAria2Btn) return;
+      installAria2Btn.disabled = busy;
+      installAria2Btn.textContent = busy ? 'Installing…' : 'Install aria2';
+    };
     try {
+      setBusy(true);
+      aria2InstallStatusEl.textContent = 'Installing aria2… this can take a minute.';
+      aria2InstallStatusEl.className = 'system-status';
       showMessage('Installing aria2...', '');
       const result = await api('/api/system/aria2/install', { method: 'POST' });
       renderAria2Status(result.aria2c);
-      showMessage(result.aria2c.installed ? 'aria2 installed' : (result.output || 'Install command finished'), result.aria2c.installed ? 'ok' : '');
+      if (result.aria2c.installed) {
+        aria2InstallStatusEl.textContent = '';
+        showMessage('aria2 installed', 'ok');
+      } else {
+        const msg = result.output || result.aria2c.command || 'Install command finished';
+        aria2InstallStatusEl.textContent = msg;
+        aria2InstallStatusEl.className = 'system-status error';
+        showMessage(msg, 'error');
+      }
     } catch (error) {
+      aria2InstallStatusEl.textContent = error.message;
+      aria2InstallStatusEl.className = 'system-status error';
       showMessage(error.message, 'error');
+    } finally {
+      setBusy(false);
     }
     return;
   }

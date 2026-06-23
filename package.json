@@ -13,8 +13,8 @@
     "dist": "npm run electron:rebuild && electron-builder -c.npmRebuild=false",
     "dist:mac": "npm run electron:rebuild && electron-builder --mac dmg -c.npmRebuild=false",
     "dist:win": "npm run electron:rebuild && electron-builder --win nsis portable -c.npmRebuild=false",
-    "dist:linux": "npm run electron:rebuild && electron-builder --linux deb AppImage -c.npmRebuild=false",
-    "dist:all": "npm run electron:rebuild && electron-builder --mac dmg --win nsis portable --linux deb AppImage -c.npmRebuild=false"
+    "dist:linux": "electron-builder --linux",
+    "dist:all": "npm run electron:rebuild && electron-builder --mac dmg --win nsis portable --linux"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",
@@ -64,8 +64,8 @@
     },
     "linux": {
       "target": [
-        "deb",
-        "AppImage"
+        { "target": "deb", "arch": ["x64", "arm64"] },
+        { "target": "AppImage", "arch": ["x64", "arm64"] }
       ],
       "category": "Network",
       "maintainer": "nxc <nxc@example.com>"

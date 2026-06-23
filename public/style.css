@@ -73,6 +73,10 @@ main {
   margin-top: 6px;
 }
 
+.system-status.error {
+  color: #b00020;
+}
+
 .system-row code {
   display: block;
   margin-top: 8px;

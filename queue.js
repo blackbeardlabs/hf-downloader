@@ -39,7 +39,7 @@ class DownloadQueue {
     if (!job) throw new Error('job not found');
     if (this.active && this.active.jobId === Number(jobId)) {
       this.active.reason = 'paused';
-      this.active.child.kill('SIGTERM');
+      this.active.child?.kill('SIGTERM');
     }
     updateJob(jobId, { status: 'paused', error: null });
     for (const file of listFiles(jobId)) {
@@ -55,7 +55,7 @@ class DownloadQueue {
     if (this.active && this.active.jobId === Number(jobId)) {
       this.active.reason = 'cancelled';
       updateFile(this.active.fileId, { status: 'paused' });
-      this.active.child.kill('SIGTERM');
+      this.active.child?.kill('SIGTERM');
     }
     updateJob(jobId, { status: 'cancelled', error: null });
   }
@@ -65,7 +65,7 @@ class DownloadQueue {
     if (!job) throw new Error('job not found');
     if (this.active && this.active.jobId === Number(jobId)) {
       this.active.reason = 'deleted';
-      this.active.child.kill('SIGTERM');
+      this.active.child?.kill('SIGTERM');
     }
     deleteJob(jobId);
   }
@@ -139,7 +139,7 @@ class DownloadQueue {
           this.monitor.markRestart();
           this.active.reason = 'auto_restart';
           this.active.restartMessage = `Auto restart: ${decision.reason}`;
-          this.active.child.kill('SIGTERM');
+          this.active.child?.kill('SIGTERM');
         }
       }
     });

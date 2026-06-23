@@ -1,14 +1,52 @@
 const { spawn, spawnSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 
-function commandExists(command) {
+const BIN_DIRS = process.platform === 'win32'
+  ? []
+  : ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'];
+
+function resolveCommand(command) {
+  if (path.isAbsolute(command) && fs.existsSync(command)) return command;
   const checker = process.platform === 'win32' ? 'where' : 'which';
   const result = spawnSync(checker, [command], { encoding: 'utf8' });
-  return result.status === 0 ? result.stdout.split(/\r?\n/)[0].trim() : '';
+  if (result.status === 0) {
+    const found = result.stdout.split(/\r?\n/)[0].trim();
+    if (found) return found;
+  }
+  if (process.platform === 'win32') return '';
+  for (const dir of BIN_DIRS) {
+    const candidate = path.join(dir, command);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return '';
+}
+
+function commandExists(command) {
+  return Boolean(resolveCommand(command));
+}
+
+function envWithPath(...dirs) {
+  const extra = dirs.filter(Boolean);
+  if (!extra.length) return process.env;
+  return {
+    ...process.env,
+    PATH: [...extra, process.env.PATH || ''].filter(Boolean).join(path.delimiter)
+  };
+}
+
+let aria2BinaryCache = null;
+function getAria2Binary() {
+  if (aria2BinaryCache) return aria2BinaryCache;
+  const command = process.platform === 'win32' ? 'aria2c.exe' : 'aria2c';
+  const found = resolveCommand(command) || resolveCommand('aria2c');
+  if (found) aria2BinaryCache = found;
+  return found;
 }
 
 function checkAria2() {
   const command = process.platform === 'win32' ? 'aria2c.exe' : 'aria2c';
-  const foundPath = commandExists(command) || commandExists('aria2c');
+  const foundPath = resolveCommand(command) || resolveCommand('aria2c');
   if (!foundPath) {
     return {
       installed: false,
@@ -17,7 +55,7 @@ function checkAria2() {
     };
   }
 
-  const version = spawnSync('aria2c', ['--version'], { encoding: 'utf8' });
+  const version = spawnSync(foundPath, ['--version'], { encoding: 'utf8' });
   return {
     installed: version.status === 0,
     platform: process.platform,
@@ -39,30 +77,34 @@ async function installAria2() {
   }
 
   if (process.platform === 'darwin') {
-    if (!commandExists('brew')) {
+    const brew = resolveCommand('brew');
+    if (!brew) {
       throw new Error('Homebrew was not found. Install Homebrew first, then run: brew install aria2');
     }
-    return runAndCollect('brew', ['install', 'aria2']);
+    return runAndCollect(brew, ['install', 'aria2'], envWithPath(path.dirname(brew)));
   }
 
   if (process.platform === 'win32') {
-    if (!commandExists('winget')) {
+    const winget = resolveCommand('winget');
+    if (!winget) {
       throw new Error('winget was not found. Install aria2 manually and make sure aria2c.exe is in PATH.');
     }
-    return runAndCollect('winget', ['install', 'aria2.aria2', '--accept-package-agreements', '--accept-source-agreements']);
+    return runAndCollect(winget, ['install', 'aria2.aria2', '--accept-package-agreements', '--accept-source-agreements']);
   }
 
-  if (commandExists('apt-get')) {
+  const aptGet = resolveCommand('apt-get');
+  if (aptGet) {
     if (process.getuid && process.getuid() === 0) {
       return await runSequence([
-        ['apt-get', ['update']],
-        ['apt-get', ['install', '-y', 'aria2']]
+        [aptGet, ['update']],
+        [aptGet, ['install', '-y', 'aria2']]
       ]);
     }
-    if (commandExists('pkexec')) {
+    const pkexec = resolveCommand('pkexec');
+    if (pkexec) {
       return await runSequence([
-        ['pkexec', ['apt-get', 'update']],
-        ['pkexec', ['apt-get', 'install', '-y', 'aria2']]
+        [pkexec, ['apt-get', 'update']],
+        [pkexec, ['apt-get', 'install', '-y', 'aria2']]
       ]);
     }
     throw new Error('apt-get was found but pkexec is unavailable. Run manually: sudo apt update && sudo apt install aria2');
@@ -80,8 +122,8 @@ async function runSequence(commands) {
   return { started: true, output };
 }
 
-function runAndCollect(command, args) {
-  const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+function runAndCollect(command, args, env) {
+  const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], env: env || process.env });
   let output = '';
 
   return new Promise((resolve, reject) => {
@@ -104,5 +146,6 @@ function runAndCollect(command, args) {
 
 module.exports = {
   checkAria2,
-  installAria2
+  installAria2,
+  getAria2Binary
 };

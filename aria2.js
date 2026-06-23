@@ -1,5 +1,6 @@
 const fs = require('fs');
 const { spawn } = require('child_process');
+const { getAria2Binary } = require('./system');
 
 function maskToken(text, token) {
   if (!text || !token) return text || '';
@@ -61,7 +62,15 @@ function runAria2(file, options = {}) {
 
   args.push(file.url);
 
-  const child = spawn('aria2c', args, {
+  const binary = getAria2Binary();
+  if (!binary) {
+    return {
+      child: null,
+      promise: Promise.resolve({ ok: false, error: 'aria2c was not found. Install aria2 and make sure aria2c is available.', childError: true })
+    };
+  }
+
+  const child = spawn(binary, args, {
     stdio: ['ignore', 'pipe', 'pipe']
   });
 
