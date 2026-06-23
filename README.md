@@ -101,6 +101,8 @@ DOWNLOAD_ROOT=/Users/you/Downloads/hf-downloader
 DOWNLOAD_ROOT=C:\Users\you\Downloads\hf-downloader
 ```
 
+`HF_DOWNLOADER_DATA_DIR` sets the directory used for the SQLite database (`app.db`). It defaults to a `data` folder next to the server. The Electron desktop app stores it under `userData/data` automatically, so release users do not need to set it.
+
 ## Hugging Face Token
 
 For private or gated repos, enter the token in the `Hugging Face API Token` box on the dashboard and click `Save token`.
@@ -157,6 +159,10 @@ If the server restarts while a job is running, active files are moved back to `q
 
 `cancel` stops a job and leaves its row in the database with `cancelled` status. `delete` removes the job row and its file rows from SQLite, but it does not delete downloaded files from disk.
 
+## Job Detail
+
+Click a job name to open its detail panel. It lists every file in the job with status (`queued`, `downloading`, `paused`, `completed`), size, downloaded bytes, and live speed for the active file. The active job's speed is also shown in the jobs table.
+
 ## Speed and Auto Restart
 
 The dashboard shows downloaded bytes and current speed. Active progress is read from aria2 progress output, not from filesystem file size, because some filesystems may preallocate or expose sparse files at their final size before all bytes are downloaded.
@@ -170,6 +176,8 @@ Auto restart can be configured from the dashboard `Settings` modal. It supports:
 - cooldown seconds
 
 Auto restart is disabled by default.
+
+The dashboard `Settings` modal also manages the Hugging Face token and includes `Reset defaults` to restore the auto-restart configuration. The download forms persist their last values in the browser, so a refresh keeps your previously typed repo, target dir, and patterns.
 
 ## API Endpoints
 
@@ -222,7 +230,7 @@ npm run dist:all
 Configured targets:
 
 - Windows: `.exe` installer or portable executable
-- Linux: `.deb` and `.AppImage`
+- Linux: `.deb` and `.AppImage`, built for both `x64` and `arm64`
 - macOS: `.dmg`
 
 Packaging notes:
@@ -241,3 +249,4 @@ Packaging notes:
 - No TypeScript, bundler, frontend framework, account system, sync, cloud service, or telemetry is used.
 - Physical downloaded files are not deleted when a job is cancelled or deleted from the UI.
 - Default concurrency is one file at a time.
+- Press `Esc` to close the file preview and Settings modals.
