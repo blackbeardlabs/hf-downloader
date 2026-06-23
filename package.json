@@ -1,0 +1,77 @@
+{
+  "name": "hf-downloader",
+  "version": "1.0.0",
+  "description": "Local Hugging Face and URL download manager using aria2c",
+  "author": "nxc <nxc@example.com>",
+  "homepage": "https://github.com/nxc/hf-downloader",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "npm run rebuild:node && node server.js",
+    "rebuild:node": "npm rebuild better-sqlite3",
+    "electron": "npm run electron:rebuild && electron .",
+    "electron:rebuild": "electron-rebuild -f -w better-sqlite3",
+    "dist": "npm run electron:rebuild && electron-builder -c.npmRebuild=false",
+    "dist:mac": "npm run electron:rebuild && electron-builder --mac dmg -c.npmRebuild=false",
+    "dist:win": "npm run electron:rebuild && electron-builder --win nsis portable -c.npmRebuild=false",
+    "dist:linux": "npm run electron:rebuild && electron-builder --linux deb AppImage -c.npmRebuild=false",
+    "dist:all": "npm run electron:rebuild && electron-builder --mac dmg --win nsis portable --linux deb AppImage -c.npmRebuild=false"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "local.hf-downloader.app",
+    "productName": "HF Downloader",
+    "files": [
+      "aria2.js",
+      "db.js",
+      "hf.js",
+      "paths.js",
+      "policy.js",
+      "queue.js",
+      "server.js",
+      "settings.js",
+      "system.js",
+      "electron/**/*",
+      "public/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".env.example",
+        "to": ".env.example"
+      }
+    ],
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**/*"
+    ],
+    "mac": {
+      "target": [
+        "dmg"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "linux": {
+      "target": [
+        "deb",
+        "AppImage"
+      ],
+      "category": "Network",
+      "maintainer": "nxc <nxc@example.com>"
+    }
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

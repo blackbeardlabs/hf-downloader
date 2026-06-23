@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HF Downloader</title>
+    <link rel="stylesheet" href="/style.css">
+  </head>
+  <body>
+    <header>
+      <h1>HF Downloader</h1>
+      <div class="header-actions">
+        <button type="button" data-action="open-settings">Settings</button>
+        <div id="health" class="pill">checking</div>
+      </div>
+    </header>
+
+    <main>
+      <section id="system-panel" class="panel system-panel hidden">
+        <h2>System Dependency</h2>
+        <div class="system-row">
+          <div>
+            <strong>aria2c is required for downloads.</strong>
+            <div id="aria2-status" class="system-status">checking</div>
+            <code id="aria2-command"></code>
+          </div>
+          <button type="button" data-action="install-aria2">Install aria2</button>
+        </div>
+      </section>
+
+      <section id="token-panel" class="panel token-panel hidden">
+        <form id="token-form">
+          <h2>Hugging Face API Token</h2>
+          <div class="token-row">
+            <input name="token" type="password" placeholder="hf_..." autocomplete="off">
+            <button type="submit">Save token</button>
+            <button type="button" data-action="clear-token">Clear</button>
+            <span id="token-status" class="token-status">checking</span>
+          </div>
+        </form>
+      </section>
+
+      <section class="forms">
+        <form id="hf-form" class="panel">
+          <h2>Hugging Face repo</h2>
+          <label>Repo ID <input name="repoId" placeholder="owner/repo-name" required></label>
+          <label>Repo type
+            <select name="repoType">
+              <option value="model">model</option>
+              <option value="dataset">dataset</option>
+              <option value="space">space</option>
+            </select>
+          </label>
+          <label>Revision <input name="revision" value="main"></label>
+          <label>Target dir <input name="targetDir" placeholder="/home/user/Downloads/my-model" required></label>
+          <label>Include <input name="include" placeholder="*.safetensors, *.json"></label>
+          <label>Exclude <input name="exclude" placeholder="README.md"></label>
+          <div class="button-row">
+            <button type="button" id="hf-preview">Preview files</button>
+            <button type="submit">Import selected</button>
+          </div>
+        </form>
+
+        <form id="url-form" class="panel">
+          <h2>General File Downloader</h2>
+          <label>Job name <input name="name" value="manual-downloads"></label>
+          <label>Target dir <input name="targetDir" placeholder="/home/user/Downloads/manual" required></label>
+          <label>URLs <textarea name="urls" rows="8" placeholder="https://example.com/file.zip" required></textarea></label>
+          <button type="submit">Create</button>
+        </form>
+      </section>
+
+      <section class="panel">
+        <h2>Jobs</h2>
+        <div id="message"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Files</th>
+                <th>Downloaded</th>
+                <th>Speed</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="jobs"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Job detail</h2>
+        <div id="selected-job">Select a job</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Relative path</th>
+                <th>Status</th>
+                <th>Downloaded</th>
+                <th>Speed</th>
+                <th>Attempts</th>
+                <th>Last error</th>
+              </tr>
+            </thead>
+            <tbody id="files"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <div id="hf-preview-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-panel">
+        <div class="modal-head">
+          <h2>Repo Files</h2>
+          <button type="button" data-action="close-hf-preview">Close</button>
+        </div>
+        <div id="hf-file-tools" class="file-tools">
+          <span id="hf-file-count">No files loaded</span>
+          <input id="hf-file-filter" type="search" placeholder="Filter files">
+          <button type="button" data-action="hf-select-all">all</button>
+          <button type="button" data-action="hf-select-visible">visible</button>
+          <button type="button" data-action="hf-select-none">none</button>
+        </div>
+        <div id="hf-files" class="hf-files modal-file-list"></div>
+        <div class="modal-actions">
+          <button type="button" data-action="close-hf-preview">Close</button>
+          <button type="button" data-action="hf-import-selected">Import selected</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <form id="settings-form" class="modal-panel">
+        <div class="modal-head">
+          <h2>Download Settings</h2>
+          <button type="button" data-action="close-settings">Close</button>
+        </div>
+
+        <div class="settings-grid">
+          <label class="check-row"><input type="checkbox" name="autoRestartEnabled"> Enable auto restart</label>
+          <fieldset>
+            <legend>Hugging Face API Token</legend>
+            <div class="settings-token-row">
+              <span id="settings-token-status">checking</span>
+              <button type="button" data-action="clear-token">Clear token</button>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Rule mode</legend>
+            <label class="radio-row"><input type="radio" name="applyRules" value="any"> Restart if any enabled rule matches</label>
+            <label class="radio-row"><input type="radio" name="applyRules" value="all"> Restart only if all enabled rules match</label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Low speed rule</legend>
+            <label class="check-row"><input type="checkbox" name="lowSpeedEnabled"> Enable</label>
+            <label>Speed below <input name="lowSpeedLimit" placeholder="5K"></label>
+            <label>For seconds <input name="lowSpeedDuration" type="number" min="5"></label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Average drop rule</legend>
+            <label class="check-row"><input type="checkbox" name="averageDropEnabled"> Enable</label>
+            <label>Average window seconds <input name="averageWindow" type="number" min="30"></label>
+            <label>Recent drop duration seconds <input name="averageDuration" type="number" min="5"></label>
+            <label>Drop percent <input name="dropPercent" type="number" min="1" max="99"></label>
+            <label>Minimum baseline speed <input name="minBaselineSpeed" placeholder="20K"></label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Restart limits</legend>
+            <label>Max restarts per file <input name="maxRestartsPerFile" type="number" min="0"></label>
+            <label>Max restarts per job <input name="maxRestartsPerJob" type="number" min="0"></label>
+            <label>Cooldown seconds <input name="cooldownSeconds" type="number" min="0"></label>
+          </fieldset>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" data-action="reset-settings">Reset defaults</button>
+          <button type="submit">Save</button>
+        </div>
+      </form>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
