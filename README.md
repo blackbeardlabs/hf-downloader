@@ -4,6 +4,20 @@ Local Hugging Face repo and general file download manager. It uses Node.js, Expr
 
 The app runs locally on Linux, macOS, and Windows. There is no account system, cloud sync, telemetry, or external backend service.
 
+## Screenshots
+
+### Dashboard
+
+<img src="img/3.png" alt="HF Downloader dashboard with Hugging Face and general file forms" width="100%">
+
+### Jobs and File Progress
+
+<img src="img/2.png" alt="HF Downloader jobs table and file progress detail" width="100%">
+
+### Download Settings
+
+<img src="img/1.png" alt="HF Downloader download settings modal" width="100%">
+
 ## Requirements
 
 - Node.js 18 or newer
