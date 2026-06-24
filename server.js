@@ -59,12 +59,65 @@ function etaSeconds(remainingBytes, speedBps) {
   return Math.ceil(remaining / speed);
 }
 
-function publicJob(job, speedBps = 0) {
-  const totalFiles = Number(job.total_files || 0);
-  const completedFiles = Number(job.completed_files || 0);
-  const downloadedBytes = Number(job.downloaded_bytes || 0);
-  const totalBytes = Number(job.total_bytes || 0);
-  const unknownSizeFiles = Number(job.unknown_size_files || 0);
+function diskCompletedSize(file) {
+  if (!file || file.status !== 'completed') return null;
+  try {
+    const stat = fs.statSync(path.join(file.output_dir, file.output_name));
+    return stat.isFile() && stat.size > 0 ? stat.size : null;
+  } catch {
+    return null;
+  }
+}
+
+function effectiveFileNumbers(file) {
+  const diskSize = diskCompletedSize(file);
+  const rawSize = Number(file.size || 0);
+  const rawDownloaded = Number(file.downloaded || 0);
+  const shouldTrustDisk = diskSize && rawSize > 0 && rawSize <= 1024 && diskSize > rawSize;
+  const size = shouldTrustDisk ? diskSize : rawSize;
+  const downloaded = shouldTrustDisk ? diskSize : rawDownloaded;
+  return { size, downloaded };
+}
+
+function effectiveJobStats(job, files = null) {
+  if (!Array.isArray(files)) {
+    return {
+      totalFiles: Number(job.total_files || 0),
+      completedFiles: Number(job.completed_files || 0),
+      downloadedBytes: Number(job.downloaded_bytes || 0),
+      totalBytes: Number(job.total_bytes || 0),
+      unknownSizeFiles: Number(job.unknown_size_files || 0)
+    };
+  }
+
+  return files.reduce((stats, file) => {
+    const numbers = effectiveFileNumbers(file);
+    stats.totalFiles += 1;
+    if (file.status === 'completed') stats.completedFiles += 1;
+    stats.downloadedBytes += numbers.downloaded || 0;
+    if (numbers.size > 0) {
+      stats.totalBytes += numbers.size;
+    } else if (!['completed', 'skipped'].includes(file.status)) {
+      stats.unknownSizeFiles += 1;
+    }
+    return stats;
+  }, {
+    totalFiles: 0,
+    completedFiles: 0,
+    downloadedBytes: 0,
+    totalBytes: 0,
+    unknownSizeFiles: 0
+  });
+}
+
+function publicJob(job, speedBps = 0, files = null) {
+  const {
+    totalFiles,
+    completedFiles,
+    downloadedBytes,
+    totalBytes,
+    unknownSizeFiles
+  } = effectiveJobStats(job, files);
   const byteProgress = totalBytes > 0 ? clampPercent((downloadedBytes / totalBytes) * 100) : null;
   const fileProgress = totalFiles > 0 ? clampPercent((completedFiles / totalFiles) * 100) : 0;
   const remainingBytes = totalBytes > 0 ? Math.max(totalBytes - downloadedBytes, 0) : null;
@@ -94,8 +147,7 @@ function publicJob(job, speedBps = 0) {
 
 function publicFile(file, queue) {
   const speedBps = queue.speedForFile(file.id);
-  const size = Number(file.size || 0);
-  const downloaded = Number(file.downloaded || 0);
+  const { size, downloaded } = effectiveFileNumbers(file);
   const remaining = size > 0 ? Math.max(size - downloaded, 0) : null;
   const progress = size > 0
     ? clampPercent((downloaded / size) * 100)
@@ -104,7 +156,7 @@ function publicFile(file, queue) {
   return {
     ...file,
     downloaded,
-    size: file.size,
+    size: size || file.size,
     remaining_bytes: remaining,
     progress_percent: progress,
     eta_seconds: remaining === null ? null : etaSeconds(remaining, speedBps),
@@ -152,13 +204,13 @@ function createApp(queue) {
   });
 
   app.get('/api/jobs', (req, res) => {
-    res.json({ jobs: listJobs().map((job) => publicJob(job, queue.speedForJob(job.id))) });
+    res.json({ jobs: listJobs().map((job) => publicJob(job, queue.speedForJob(job.id), listFiles(job.id))) });
   });
 
   app.get('/api/jobs/:id', (req, res) => {
     const job = getJobWithStats(req.params.id);
     if (!job) return res.status(404).json({ error: 'job not found' });
-    res.json({ job: publicJob(job, queue.speedForJob(job.id)) });
+    res.json({ job: publicJob(job, queue.speedForJob(job.id), listFiles(job.id)) });
   });
 
   app.get('/api/jobs/:id/files', (req, res) => {

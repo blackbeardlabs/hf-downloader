@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const {
   getJob,
   updateJob,
@@ -11,10 +13,20 @@ const {
 const { runAria2 } = require('./aria2');
 const { DownloadPolicyMonitor } = require('./policy');
 
+function finalFileSize(file) {
+  try {
+    const stat = fs.statSync(path.join(file.output_dir, file.output_name));
+    return stat.isFile() ? stat.size : null;
+  } catch {
+    return null;
+  }
+}
+
 class DownloadQueue {
   constructor(options) {
     this.options = options;
     this.active = null;
+    this.preferredJobId = null;
     this.monitor = new DownloadPolicyMonitor();
     this.progress = {
       jobId: null,
@@ -27,10 +39,24 @@ class DownloadQueue {
 
   startJob(jobId) {
     const job = getJob(jobId);
+    const nextJobId = Number(jobId);
     if (!job) throw new Error('job not found');
     if (job.status === 'cancelled') throw new Error('cancelled jobs cannot be started');
+    if (this.active && this.active.jobId === nextJobId) {
+      updateJob(nextJobId, { status: 'running', error: null });
+      return;
+    }
+
+    this.preferredJobId = nextJobId;
+    if (this.active && this.active.jobId !== nextJobId) {
+      this.active.reason = 'job_switch';
+      updateFile(this.active.fileId, { status: 'paused' });
+      updateJob(this.active.jobId, { status: 'paused', error: null });
+      this.active.child?.kill('SIGTERM');
+    }
+
     markQueuedFiles(jobId);
-    updateJob(jobId, { status: 'queued', error: null });
+    updateJob(nextJobId, { status: 'queued', error: null });
     this.pump();
   }
 
@@ -57,6 +83,7 @@ class DownloadQueue {
       updateFile(this.active.fileId, { status: 'paused' });
       this.active.child?.kill('SIGTERM');
     }
+    if (this.preferredJobId === Number(jobId)) this.preferredJobId = null;
     updateJob(jobId, { status: 'cancelled', error: null });
   }
 
@@ -67,6 +94,7 @@ class DownloadQueue {
       this.active.reason = 'deleted';
       this.active.child?.kill('SIGTERM');
     }
+    if (this.preferredJobId === Number(jobId)) this.preferredJobId = null;
     deleteJob(jobId);
   }
 
@@ -101,6 +129,18 @@ class DownloadQueue {
 
   findNextRunnableJob() {
     const { db } = require('./db');
+    if (this.preferredJobId) {
+      const preferred = db.prepare(`
+        SELECT * FROM jobs
+        WHERE id = ? AND status IN ('queued', 'running')
+      `).get(this.preferredJobId);
+      if (preferred) {
+        this.preferredJobId = null;
+        return preferred;
+      }
+      this.preferredJobId = null;
+    }
+
     return db.prepare(`
       SELECT * FROM jobs
       WHERE status IN ('queued', 'running')
@@ -131,7 +171,9 @@ class DownloadQueue {
         };
         const updates = {};
         if (Number.isFinite(progress.downloaded)) updates.downloaded = progress.downloaded;
-        if (Number.isFinite(progress.size)) updates.size = progress.size;
+        if (Number.isFinite(progress.size) && (!file.size || progress.size >= file.size * 0.8)) {
+          updates.size = progress.size;
+        }
         if (Object.keys(updates).length) updateFile(file.id, updates);
         this.monitor.record(progress.speedBps || 0, this.options.getPolicy());
         const decision = this.monitor.evaluate(this.options.getPolicy());
@@ -158,6 +200,15 @@ class DownloadQueue {
         return;
       }
 
+      if (active && active.reason === 'job_switch') {
+        this.monitor.stop();
+        this.progress = { jobId: null, fileId: null, speedBps: 0, percent: null, updatedAt: 0 };
+        updateFile(file.id, { status: 'paused' });
+        updateJob(job.id, { status: 'paused', error: null });
+        setImmediate(() => this.pump());
+        return;
+      }
+
       if (active && active.reason === 'cancelled') {
         this.monitor.stop();
         this.progress = { jobId: null, fileId: null, speedBps: 0, percent: null, updatedAt: 0 };
@@ -180,8 +231,9 @@ class DownloadQueue {
 
       if (result.ok) {
         this.monitor.stop();
-        const downloaded = latestFile.size || latestFile.downloaded || file.downloaded || null;
-        updateFile(file.id, { status: 'completed', downloaded, last_error: null });
+        const diskSize = finalFileSize(latestFile);
+        const size = diskSize || latestFile.size || latestFile.downloaded || file.size || file.downloaded || null;
+        updateFile(file.id, { status: 'completed', size, downloaded: size, last_error: null });
       } else {
         updateFile(file.id, { status: 'queued', last_error: result.error || 'Download failed' });
       }

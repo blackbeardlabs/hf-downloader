@@ -11,6 +11,8 @@ function unitToBytes(value, unit) {
   const n = Number(value);
   if (!Number.isFinite(n)) return 0;
   const normalized = String(unit || '').toLowerCase();
+  if (normalized.startsWith('p')) return n * 1024 * 1024 * 1024 * 1024 * 1024;
+  if (normalized.startsWith('t')) return n * 1024 * 1024 * 1024 * 1024;
   if (normalized.startsWith('g')) return n * 1024 * 1024 * 1024;
   if (normalized.startsWith('m')) return n * 1024 * 1024;
   if (normalized.startsWith('k')) return n * 1024;
@@ -18,9 +20,12 @@ function unitToBytes(value, unit) {
 }
 
 function parseAria2Progress(text) {
-  const speedMatch = text.match(/DL:([0-9.]+)\s*([KMG]?i?B?)/i);
-  const progressMatch = text.match(/\((\d+)%\)/);
-  const downloadedMatch = text.match(/\s([0-9.]+)\s*([KMG]?i?B?)\/([0-9.]+)\s*([KMG]?i?B?)/i);
+  const lines = String(text || '').split(/\r?\n/).filter((line) => line.includes('[#') || line.includes('DL:'));
+  const line = lines.at(-1) || '';
+  const unit = '(?:[KMGTPE]?i?B|B)';
+  const speedMatch = line.match(new RegExp(`DL:([0-9.]+)\\s*(${unit})`, 'i'));
+  const progressMatch = line.match(/\((\d+)%\)/);
+  const downloadedMatch = line.match(new RegExp(`([0-9.]+)\\s*(${unit})\\/([0-9.]+)\\s*(${unit})\\s*\\((\\d+)%\\)`, 'i'));
   const progress = {};
 
   if (speedMatch) {
@@ -32,6 +37,7 @@ function parseAria2Progress(text) {
   if (downloadedMatch) {
     progress.downloaded = Math.round(unitToBytes(downloadedMatch[1], downloadedMatch[2]));
     progress.size = Math.round(unitToBytes(downloadedMatch[3], downloadedMatch[4]));
+    progress.percent = Number(downloadedMatch[5]);
   }
 
   return Object.keys(progress).length ? progress : null;
