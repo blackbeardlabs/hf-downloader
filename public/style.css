@@ -620,17 +620,8 @@ th {
   color: #4d5965;
 }
 
-#message {
-  min-height: 22px;
-}
-
-#message.error,
 .error {
   color: #9a2418;
-}
-
-#message.ok {
-  color: #11632d;
 }
 
 @media (max-width: 640px) {

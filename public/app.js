@@ -1,6 +1,5 @@
 const jobsEl = document.querySelector('#jobs');
 const filesEl = document.querySelector('#files');
-const messageEl = document.querySelector('#message');
 const toastContainerEl = document.querySelector('#toast-container');
 const selectedJobEl = document.querySelector('#selected-job');
 const healthEl = document.querySelector('#health');
@@ -82,8 +81,6 @@ function showToast(text, kind = 'info') {
 }
 
 function showMessage(text, kind = '') {
-  messageEl.textContent = text || '';
-  messageEl.className = kind;
   if (kind === 'ok' || kind === 'error') {
     showToast(text, kind);
   }
