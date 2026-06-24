@@ -1,6 +1,6 @@
 {
   "name": "hf-downloader",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Local Hugging Face and URL download manager using aria2c",
   "author": "blackbeardlabs",
   "license": "MIT",
@@ -18,6 +18,7 @@
     "dist:all": "npm run electron:rebuild && electron-builder --mac dmg --win nsis portable --linux"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.2.0",
     "better-sqlite3": "^12.11.1",
     "dotenv": "^16.4.7",
     "express": "^4.21.2"
@@ -41,6 +42,7 @@
       "system.js",
       "electron/**/*",
       "public/**/*",
+      "node_modules/@fortawesome/fontawesome-free/**/*",
       "package.json"
     ],
     "extraResources": [
@@ -65,8 +67,20 @@
     },
     "linux": {
       "target": [
-        { "target": "deb", "arch": ["x64", "arm64"] },
-        { "target": "AppImage", "arch": ["x64", "arm64"] }
+        {
+          "target": "deb",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
       "category": "Network",
       "maintainer": "blackbeardlabs"

@@ -115,6 +115,7 @@ function publicFile(file, queue) {
 function createApp(queue) {
   const app = express();
   app.use(express.json({ limit: '1mb' }));
+  app.use('/vendor/fontawesome', express.static(path.join(__dirname, 'node_modules', '@fortawesome', 'fontawesome-free')));
   app.use(express.static(path.join(__dirname, 'public')));
 
   app.get('/api/health', (req, res) => {

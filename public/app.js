@@ -178,11 +178,25 @@ function isActionEnabled(job, action) {
   return true;
 }
 
+const actionIcons = {
+  start: 'fa-play',
+  pause: 'fa-pause',
+  resume: 'fa-rotate-right',
+  cancel: 'fa-ban',
+  delete: 'fa-trash'
+};
+
 function button(label, action, job) {
   const disabled = isActionEnabled(job, action) ? '' : ' disabled';
-  const danger = action === 'delete' ? ' danger' : '';
-  const secondary = action === 'cancel' ? ' secondary' : '';
-  return `<button class="${danger}${secondary}" data-action="${action}" data-id="${job.id}" type="button"${disabled}>${label}</button>`;
+  const classes = ['icon-button'];
+  if (action === 'delete') classes.push('danger');
+  if (action === 'cancel') classes.push('secondary');
+  const icon = actionIcons[action] || 'fa-circle';
+  return `
+    <button class="${classes.join(' ')}" data-action="${action}" data-id="${job.id}" type="button" title="${label}" aria-label="${label}"${disabled}>
+      <i class="fa-solid ${icon}" aria-hidden="true"></i>
+    </button>
+  `;
 }
 
 function lifecycleButton(job) {
@@ -233,6 +247,113 @@ function renderFiles(files) {
       <td class="error">${escapeHtml(file.last_error || '')}</td>
     </tr>
   `).join('');
+}
+
+function storageKeyForTable(table) {
+  return `columnPercents:${table.classList.contains('jobs-table') ? 'jobs' : 'files'}`;
+}
+
+function tableHeaders(table) {
+  return [...table.querySelectorAll('thead th')];
+}
+
+function columnPercents(table) {
+  const tableWidth = table.getBoundingClientRect().width || 1;
+  return tableHeaders(table).map((th) => (th.getBoundingClientRect().width / tableWidth) * 100);
+}
+
+function applyColumnPercents(table, percents) {
+  const headers = tableHeaders(table);
+  headers.forEach((th, index) => {
+    const value = Number(percents[index]);
+    if (Number.isFinite(value) && value > 0) th.style.width = `${value}%`;
+  });
+}
+
+function saveColumnPercents(table) {
+  localStorage.setItem(storageKeyForTable(table), JSON.stringify(columnPercents(table)));
+}
+
+function applySavedColumnPercents(table) {
+  const raw = localStorage.getItem(storageKeyForTable(table));
+  if (!raw) return false;
+  try {
+    const percents = JSON.parse(raw);
+    if (!Array.isArray(percents)) return false;
+    applyColumnPercents(table, percents);
+    return true;
+  } catch {
+    localStorage.removeItem(storageKeyForTable(table));
+    return false;
+  }
+}
+
+function clearOldColumnSettings() {
+  localStorage.removeItem('columnWidths:jobs');
+  localStorage.removeItem('columnWidths:files');
+}
+
+function initResizableTable(table) {
+  if (!table || table.dataset.resizableReady) return;
+  table.dataset.resizableReady = 'true';
+  table.classList.add('resizable-table');
+  clearOldColumnSettings();
+
+  requestAnimationFrame(() => {
+    applySavedColumnPercents(table);
+  });
+
+  tableHeaders(table).forEach((th) => {
+    const handle = document.createElement('span');
+    handle.className = 'column-resizer';
+    handle.title = 'Resize column';
+    th.appendChild(handle);
+
+    handle.addEventListener('dblclick', () => {
+      localStorage.removeItem(storageKeyForTable(table));
+      tableHeaders(table).forEach((header) => {
+        header.style.width = '';
+      });
+    });
+
+    handle.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      handle.setPointerCapture(event.pointerId);
+
+      const startX = event.clientX;
+      const headers = tableHeaders(table);
+      const index = headers.indexOf(th);
+      const neighborIndex = index < headers.length - 1 ? index + 1 : index - 1;
+      if (neighborIndex < 0) return;
+
+      const tableWidth = table.getBoundingClientRect().width || 1;
+      const startPercents = columnPercents(table);
+      const minPercent = Math.min(18, Math.max(5, (56 / tableWidth) * 100));
+
+      const onMove = (moveEvent) => {
+        const direction = index < neighborIndex ? 1 : -1;
+        const deltaPercent = ((moveEvent.clientX - startX) / tableWidth) * 100 * direction;
+        const pairTotal = startPercents[index] + startPercents[neighborIndex];
+        const current = Math.max(minPercent, Math.min(pairTotal - minPercent, startPercents[index] + deltaPercent));
+        const next = pairTotal - current;
+        const nextPercents = [...startPercents];
+        nextPercents[index] = current;
+        nextPercents[neighborIndex] = next;
+        applyColumnPercents(table, nextPercents);
+      };
+
+      const onUp = (upEvent) => {
+        handle.releasePointerCapture(upEvent.pointerId);
+        handle.removeEventListener('pointermove', onMove);
+        handle.removeEventListener('pointerup', onUp);
+        saveColumnPercents(table);
+      };
+
+      handle.addEventListener('pointermove', onMove);
+      handle.addEventListener('pointerup', onUp);
+    });
+  });
 }
 
 function hfPayloadFromForm() {
@@ -423,6 +544,7 @@ restoreForm(hfForm, 'hfFormDraft');
 restoreForm(document.querySelector('#url-form'), 'urlFormDraft');
 persistForm(hfForm, 'hfFormDraft');
 persistForm(document.querySelector('#url-form'), 'urlFormDraft');
+document.querySelectorAll('table.jobs-table, table.files-table').forEach(initResizableTable);
 hfForm.addEventListener('input', clearHfPreview);
 
 hfForm.addEventListener('submit', async (event) => {
