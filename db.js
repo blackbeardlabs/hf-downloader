@@ -108,7 +108,9 @@ function listJobs() {
       j.*,
       COUNT(f.id) AS total_files,
       SUM(CASE WHEN f.status = 'completed' THEN 1 ELSE 0 END) AS completed_files,
-      COALESCE(SUM(f.downloaded), 0) AS downloaded_bytes
+      COALESCE(SUM(f.downloaded), 0) AS downloaded_bytes,
+      COALESCE(SUM(CASE WHEN f.size IS NOT NULL THEN f.size ELSE 0 END), 0) AS total_bytes,
+      SUM(CASE WHEN f.size IS NULL AND f.status NOT IN ('completed', 'skipped') THEN 1 ELSE 0 END) AS unknown_size_files
     FROM jobs j
     LEFT JOIN files f ON f.job_id = j.id
     GROUP BY j.id
@@ -122,7 +124,9 @@ function getJobWithStats(id) {
       j.*,
       COUNT(f.id) AS total_files,
       SUM(CASE WHEN f.status = 'completed' THEN 1 ELSE 0 END) AS completed_files,
-      COALESCE(SUM(f.downloaded), 0) AS downloaded_bytes
+      COALESCE(SUM(f.downloaded), 0) AS downloaded_bytes,
+      COALESCE(SUM(CASE WHEN f.size IS NOT NULL THEN f.size ELSE 0 END), 0) AS total_bytes,
+      SUM(CASE WHEN f.size IS NULL AND f.status NOT IN ('completed', 'skipped') THEN 1 ELSE 0 END) AS unknown_size_files
     FROM jobs j
     LEFT JOIN files f ON f.job_id = j.id
     WHERE j.id = ?

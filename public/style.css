@@ -152,6 +152,22 @@ button:hover {
   background: #18435f;
 }
 
+button.secondary {
+  background: #60717f;
+}
+
+button.secondary:hover {
+  background: #4d5d69;
+}
+
+button.danger {
+  background: #9a2418;
+}
+
+button.danger:hover {
+  background: #7d1d14;
+}
+
 button:disabled {
   background: #c5ccd3;
   color: #eef1f4;
@@ -247,6 +263,8 @@ legend {
 button.link {
   background: transparent;
   color: #22577a;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   padding: 0;
   text-align: left;
 }
@@ -257,13 +275,41 @@ button.link {
 
 table {
   border-collapse: collapse;
-  min-width: 880px;
+  min-width: 1060px;
+  table-layout: fixed;
   width: 100%;
 }
+
+.jobs-table {
+  min-width: 1180px;
+}
+
+.files-table {
+  min-width: 1200px;
+}
+
+.jobs-table th:nth-child(1) { width: 24%; }
+.jobs-table th:nth-child(2) { width: 92px; }
+.jobs-table th:nth-child(3) { width: 170px; }
+.jobs-table th:nth-child(4) { width: 78px; }
+.jobs-table th:nth-child(5) { width: 190px; }
+.jobs-table th:nth-child(6) { width: 110px; }
+.jobs-table th:nth-child(7) { width: 96px; }
+.jobs-table th:nth-child(8) { width: 220px; }
+
+.files-table th:nth-child(1) { width: 28%; }
+.files-table th:nth-child(2) { width: 112px; }
+.files-table th:nth-child(3) { width: 170px; }
+.files-table th:nth-child(4) { width: 190px; }
+.files-table th:nth-child(5) { width: 110px; }
+.files-table th:nth-child(6) { width: 96px; }
+.files-table th:nth-child(7) { width: 88px; }
+.files-table th:nth-child(8) { width: 230px; }
 
 th,
 td {
   border-bottom: 1px solid #e7eaee;
+  overflow-wrap: anywhere;
   padding: 10px;
   text-align: left;
   vertical-align: top;
@@ -283,6 +329,65 @@ th {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.action-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.primary-action {
+  min-width: 78px;
+}
+
+.muted,
+.job-meta,
+.progress-meta small {
+  color: #6b7480;
+  font-size: 12px;
+}
+
+.job-meta {
+  margin-top: 4px;
+}
+
+.progress-cell {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.progress-bar {
+  background: #e7eaee;
+  border-radius: 999px;
+  height: 9px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.progress-fill {
+  background: #2c7a5b;
+  height: 100%;
+  transition: width 180ms linear;
+}
+
+.progress-meta {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  white-space: nowrap;
+}
+
+.cell-number,
+.cell-bytes {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cell-name {
+  min-width: 0;
 }
 
 .file-tools {

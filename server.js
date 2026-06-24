@@ -46,7 +46,30 @@ function parsePatterns(value) {
   return [];
 }
 
+function clampPercent(value) {
+  if (!Number.isFinite(value)) return null;
+  return Math.max(0, Math.min(100, value));
+}
+
+function etaSeconds(remainingBytes, speedBps) {
+  const remaining = Number(remainingBytes || 0);
+  const speed = Number(speedBps || 0);
+  if (remaining <= 0) return 0;
+  if (speed <= 0) return null;
+  return Math.ceil(remaining / speed);
+}
+
 function publicJob(job, speedBps = 0) {
+  const totalFiles = Number(job.total_files || 0);
+  const completedFiles = Number(job.completed_files || 0);
+  const downloadedBytes = Number(job.downloaded_bytes || 0);
+  const totalBytes = Number(job.total_bytes || 0);
+  const unknownSizeFiles = Number(job.unknown_size_files || 0);
+  const byteProgress = totalBytes > 0 ? clampPercent((downloadedBytes / totalBytes) * 100) : null;
+  const fileProgress = totalFiles > 0 ? clampPercent((completedFiles / totalFiles) * 100) : 0;
+  const remainingBytes = totalBytes > 0 ? Math.max(totalBytes - downloadedBytes, 0) : null;
+  const eta = unknownSizeFiles > 0 || remainingBytes === null ? null : etaSeconds(remainingBytes, speedBps);
+
   return {
     id: job.id,
     type: job.type,
@@ -56,17 +79,36 @@ function publicJob(job, speedBps = 0) {
     created_at: job.created_at,
     updated_at: job.updated_at,
     error: job.error,
-    total_files: job.total_files || 0,
-    completed_files: job.completed_files || 0,
-    downloaded_bytes: job.downloaded_bytes || 0,
+    total_files: totalFiles,
+    completed_files: completedFiles,
+    downloaded_bytes: downloadedBytes,
+    total_bytes: totalBytes,
+    remaining_bytes: remainingBytes,
+    unknown_size_files: unknownSizeFiles,
+    progress_percent: byteProgress ?? fileProgress,
+    progress_basis: byteProgress === null ? 'files' : 'bytes',
+    eta_seconds: eta,
     speed_bps: speedBps
   };
 }
 
 function publicFile(file, queue) {
+  const speedBps = queue.speedForFile(file.id);
+  const size = Number(file.size || 0);
+  const downloaded = Number(file.downloaded || 0);
+  const remaining = size > 0 ? Math.max(size - downloaded, 0) : null;
+  const progress = size > 0
+    ? clampPercent((downloaded / size) * 100)
+    : (file.status === 'completed' ? 100 : null);
+
   return {
     ...file,
-    speed_bps: queue.speedForFile(file.id)
+    downloaded,
+    size: file.size,
+    remaining_bytes: remaining,
+    progress_percent: progress,
+    eta_seconds: remaining === null ? null : etaSeconds(remaining, speedBps),
+    speed_bps: speedBps
   };
 }
 

@@ -117,6 +117,22 @@ function speed(value) {
   return `${bytes(n)}/s`;
 }
 
+function eta(value) {
+  if (value === 0) return 'done';
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return '-';
+  if (n < 60) return `${n}s`;
+  const minutes = Math.floor(n / 60);
+  const seconds = n % 60;
+  if (minutes < 60) return seconds ? `${minutes}m ${seconds}s` : `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours < 24) return mins ? `${hours}h ${mins}m` : `${hours}h`;
+  const days = Math.floor(hours / 24);
+  const hrs = hours % 24;
+  return hrs ? `${days}d ${hrs}h` : `${days}d`;
+}
+
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => ({
     '&': '&amp;',
@@ -125,6 +141,32 @@ function escapeHtml(value) {
     '"': '&quot;',
     "'": '&#39;'
   }[char]));
+}
+
+function progressBar(percent, label = '') {
+  const value = Number(percent);
+  const hasValue = Number.isFinite(value);
+  const safeValue = hasValue ? Math.max(0, Math.min(100, value)) : 0;
+  const text = hasValue ? `${safeValue.toFixed(safeValue >= 10 || safeValue === 0 ? 0 : 1)}%` : '-';
+  return `
+    <div class="progress-cell">
+      <div class="progress-bar" aria-label="${escapeHtml(label || 'progress')}">
+        <div class="progress-fill" style="width: ${safeValue}%"></div>
+      </div>
+      <div class="progress-meta">
+        <span>${text}</span>
+        ${label ? `<small>${escapeHtml(label)}</small>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function downloadedLabel(item) {
+  const downloaded = bytes(item.downloaded ?? item.downloaded_bytes);
+  const total = Number(item.size || item.total_bytes || 0);
+  if (!total) return downloaded;
+  const suffix = item.unknown_size_files > 0 ? ` + ${item.unknown_size_files} unknown` : '';
+  return `${downloaded} / ${bytes(total)}${suffix}`;
 }
 
 function isActionEnabled(job, action) {
@@ -138,25 +180,42 @@ function isActionEnabled(job, action) {
 
 function button(label, action, job) {
   const disabled = isActionEnabled(job, action) ? '' : ' disabled';
-  return `<button data-action="${action}" data-id="${job.id}" type="button"${disabled}>${label}</button>`;
+  const danger = action === 'delete' ? ' danger' : '';
+  const secondary = action === 'cancel' ? ' secondary' : '';
+  return `<button class="${danger}${secondary}" data-action="${action}" data-id="${job.id}" type="button"${disabled}>${label}</button>`;
+}
+
+function lifecycleButton(job) {
+  if (job.status === 'running') return button('Pause', 'pause', job);
+  if (job.status === 'paused') return button('Resume', 'resume', job);
+  if (job.status === 'queued' || job.status === 'failed') return button('Start', 'start', job);
+  return '<span class="muted">No action</span>';
+}
+
+function actionButtons(job) {
+  return `
+    <div class="action-group primary-action">${lifecycleButton(job)}</div>
+    <div class="action-group">
+      ${button('Cancel', 'cancel', job)}
+      ${button('Delete', 'delete', job)}
+    </div>
+  `;
 }
 
 function renderJobs(jobs) {
   jobsEl.innerHTML = jobs.map((job) => `
     <tr class="${job.id === selectedJobId ? 'selected' : ''}" data-job-id="${job.id}">
-      <td><button class="link" data-action="select" data-id="${job.id}" type="button">${escapeHtml(job.name)}</button></td>
-      <td>${escapeHtml(job.type)}</td>
-      <td><span class="status ${job.status}">${job.status}</span></td>
-      <td>${job.completed_files}/${job.total_files}</td>
-      <td>${bytes(job.downloaded_bytes)}</td>
-      <td>${speed(job.speed_bps)}</td>
-      <td class="actions">
-        ${button('start', 'start', job)}
-        ${button('pause', 'pause', job)}
-        ${button('resume', 'resume', job)}
-        ${button('cancel', 'cancel', job)}
-        ${button('delete', 'delete', job)}
+      <td class="cell-name">
+        <button class="link" data-action="select" data-id="${job.id}" type="button">${escapeHtml(job.name)}</button>
+        <div class="job-meta">${escapeHtml(job.type)}</div>
       </td>
+      <td><span class="status ${job.status}">${job.status}</span></td>
+      <td>${progressBar(job.progress_percent, job.progress_basis === 'files' ? 'file count' : 'bytes')}</td>
+      <td class="cell-number">${job.completed_files}/${job.total_files}</td>
+      <td class="cell-bytes">${downloadedLabel(job)}</td>
+      <td class="cell-number">${speed(job.speed_bps)}</td>
+      <td class="cell-number">${eta(job.eta_seconds)}</td>
+      <td class="actions">${actionButtons(job)}</td>
     </tr>
   `).join('');
 }
@@ -164,11 +223,13 @@ function renderJobs(jobs) {
 function renderFiles(files) {
   filesEl.innerHTML = files.map((file) => `
     <tr>
-      <td>${escapeHtml(file.relative_path)}</td>
+      <td class="cell-name">${escapeHtml(file.relative_path)}</td>
       <td><span class="status ${file.status}">${file.status}</span></td>
-      <td>${bytes(file.downloaded)}</td>
-      <td>${speed(file.speed_bps)}</td>
-      <td>${file.attempts}</td>
+      <td>${progressBar(file.progress_percent)}</td>
+      <td class="cell-bytes">${downloadedLabel(file)}</td>
+      <td class="cell-number">${speed(file.speed_bps)}</td>
+      <td class="cell-number">${eta(file.eta_seconds)}</td>
+      <td class="cell-number">${file.attempts}</td>
       <td class="error">${escapeHtml(file.last_error || '')}</td>
     </tr>
   `).join('');
