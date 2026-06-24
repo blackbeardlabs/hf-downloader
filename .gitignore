@@ -13,3 +13,8 @@ node_modules/
 dist/
 build/
 .cache/
+
+data/*.db-shm
+data/*.db-wal
+data/*.db-journal
+data/*.db
