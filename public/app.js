@@ -1,6 +1,7 @@
 const jobsEl = document.querySelector('#jobs');
 const filesEl = document.querySelector('#files');
 const messageEl = document.querySelector('#message');
+const toastContainerEl = document.querySelector('#toast-container');
 const selectedJobEl = document.querySelector('#selected-job');
 const healthEl = document.querySelector('#health');
 const systemPanelEl = document.querySelector('#system-panel');
@@ -24,6 +25,9 @@ const settingsForm = document.querySelector('#settings-form');
 let selectedJobId = Number(localStorage.getItem('selectedJobId')) || null;
 let hfPreviewFiles = [];
 let settingsDefaults = null;
+let seenJobStatuses = new Map();
+let didLoadJobsOnce = false;
+const recentToasts = new Map();
 
 function persistForm(form, key) {
   form.addEventListener('input', () => {
@@ -46,9 +50,43 @@ function restoreForm(form, key) {
   }
 }
 
+function showToast(text, kind = 'info') {
+  if (!text || !toastContainerEl) return;
+  const toast = document.createElement('div');
+  const safeKind = ['ok', 'error', 'info'].includes(kind) ? kind : 'info';
+  const toastKey = `${safeKind}:${text}`;
+  const now = Date.now();
+  if (now - (recentToasts.get(toastKey) || 0) < 10000) return;
+  recentToasts.set(toastKey, now);
+
+  toast.className = `toast ${safeKind}`;
+  toast.setAttribute('role', safeKind === 'error' ? 'alert' : 'status');
+  toast.innerHTML = `
+    <div class="toast-icon">
+      <i class="fa-solid ${safeKind === 'ok' ? 'fa-check' : safeKind === 'error' ? 'fa-triangle-exclamation' : 'fa-circle-info'}" aria-hidden="true"></i>
+    </div>
+    <div class="toast-text">${escapeHtml(text)}</div>
+    <button class="toast-close" type="button" aria-label="Close notification">
+      <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+    </button>
+  `;
+
+  const close = () => {
+    toast.classList.add('toast-out');
+    window.setTimeout(() => toast.remove(), 180);
+  };
+
+  toast.querySelector('.toast-close').addEventListener('click', close);
+  toastContainerEl.appendChild(toast);
+  window.setTimeout(close, safeKind === 'error' ? 7000 : 4200);
+}
+
 function showMessage(text, kind = '') {
   messageEl.textContent = text || '';
   messageEl.className = kind;
+  if (kind === 'ok' || kind === 'error') {
+    showToast(text, kind);
+  }
 }
 
 function renderTokenStatus(status) {
@@ -478,6 +516,25 @@ async function importSelectedHfFiles() {
   await refresh();
 }
 
+function notifyJobStatusChanges(jobs) {
+  const nextStatuses = new Map();
+  for (const job of jobs) {
+    const previous = seenJobStatuses.get(job.id);
+    nextStatuses.set(job.id, job.status);
+
+    if (!didLoadJobsOnce) continue;
+
+    if (job.status === 'completed' && previous !== 'completed') {
+      showToast(`Job completed: ${job.name}`, 'ok');
+    }
+    if (job.status === 'failed' && previous !== 'failed') {
+      showToast(`Job failed: ${job.name}${job.error ? ` - ${job.error}` : ''}`, 'error');
+    }
+  }
+  seenJobStatuses = nextStatuses;
+  didLoadJobsOnce = true;
+}
+
 async function refresh() {
   try {
     const health = await api('/api/health');
@@ -487,6 +544,7 @@ async function refresh() {
     renderAria2Status(health.aria2c);
 
     const { jobs } = await api('/api/jobs');
+    notifyJobStatusChanges(jobs);
     renderJobs(jobs);
     if (selectedJobId) {
       const selected = jobs.find((job) => job.id === selectedJobId);
@@ -693,6 +751,14 @@ document.addEventListener('click', async (event) => {
   }
 
   try {
+    const actionSuccess = {
+      start: 'Job started',
+      pause: 'Job paused',
+      resume: 'Job resumed',
+      cancel: 'Job cancelled',
+      delete: 'Job deleted'
+    };
+
     if (action === 'delete') {
       await api(`/api/jobs/${id}`, { method: 'DELETE' });
       if (selectedJobId === id) {
@@ -707,6 +773,9 @@ document.addEventListener('click', async (event) => {
     if (action !== 'delete') {
       selectedJobId = id;
       localStorage.setItem('selectedJobId', String(selectedJobId));
+    }
+    if (actionSuccess[action]) {
+      showMessage(actionSuccess[action], 'ok');
     }
     await refresh();
   } catch (error) {
