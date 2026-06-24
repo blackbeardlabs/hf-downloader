@@ -208,11 +208,9 @@ function lifecycleButton(job) {
 
 function actionButtons(job) {
   return `
-    <div class="action-group primary-action">${lifecycleButton(job)}</div>
-    <div class="action-group">
-      ${button('Cancel', 'cancel', job)}
-      ${button('Delete', 'delete', job)}
-    </div>
+    ${lifecycleButton(job)}
+    ${button('Cancel', 'cancel', job)}
+    ${button('Delete', 'delete', job)}
   `;
 }
 

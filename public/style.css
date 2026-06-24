@@ -334,18 +334,9 @@ th {
 
 .actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
-}
-
-.action-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.primary-action {
-  min-width: 78px;
+  white-space: nowrap;
 }
 
 .muted,
