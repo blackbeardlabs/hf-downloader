@@ -28,6 +28,11 @@ const modelFormatEl = document.querySelector('#model-format');
 const modelScanStatusEl = document.querySelector('#model-scan-status');
 const modelProgressFillEl = document.querySelector('#model-progress-fill');
 const modelCountEl = document.querySelector('#model-count');
+const modelExportModalEl = document.querySelector('#model-export-modal');
+const modelExportListEl = document.querySelector('#model-export-list');
+const modelExportTextEl = document.querySelector('#model-export-text');
+const modelExportCountEl = document.querySelector('#model-export-count');
+const modelExportFormatEl = document.querySelector('#model-export-format');
 
 let selectedJobId = Number(localStorage.getItem('selectedJobId')) || null;
 let hfPreviewFiles = [];
@@ -37,6 +42,7 @@ let didLoadJobsOnce = false;
 let currentModels = [];
 let currentModelTotal = 0;
 let modelSort = { key: 'name', direction: 'asc' };
+let currentExportModels = [];
 const recentToasts = new Map();
 
 function persistForm(form, key) {
@@ -235,6 +241,61 @@ function sortedModels(models) {
   const { key, direction } = modelSort;
   const factor = direction === 'desc' ? -1 : 1;
   return [...models].sort((a, b) => compareValues(a[key], b[key]) * factor);
+}
+
+function cleanExportCell(value) {
+  return String(value ?? '')
+    .replace(/\r?\n/g, ' ')
+    .replace(/\t/g, ' ')
+    .trim();
+}
+
+function modelExportTable(models) {
+  return [
+    ['Name', 'Domain', 'Format', 'Arch', 'Creator', 'Quant', 'Precision', 'Size', 'Path'],
+    ...models.map((model) => [
+      model.name,
+      model.domain,
+      model.format,
+      model.architecture,
+      model.creator,
+      model.quant,
+      model.precision,
+      bytes(model.size_bytes),
+      model.path
+    ].map(cleanExportCell))
+  ];
+}
+
+function escapeCsvCell(value) {
+  return `"${String(value ?? '').replace(/"/g, '""')}"`;
+}
+
+function modelExportRows(models, format = 'aligned') {
+  const table = modelExportTable(models);
+  if (format === 'csv') {
+    return table.map((row) => row.map(escapeCsvCell).join(',')).join('\n');
+  }
+  if (format === 'tsv') {
+    return table.map((row) => row.join('\t')).join('\n');
+  }
+
+  const widths = table[0].map((_, columnIndex) => (
+    columnIndex === table[0].length - 1
+      ? 0
+      : Math.max(...table.map((row) => String(row[columnIndex] || '').length))
+  ));
+
+  return table.map((row) => row.map((cell, columnIndex) => {
+    if (columnIndex === row.length - 1) return cell;
+    return String(cell || '').padEnd(widths[columnIndex] + 2, ' ');
+  }).join('')).join('\n');
+}
+
+function exportFileName(format = 'aligned') {
+  const stamp = new Date().toISOString().slice(0, 10);
+  const extension = format === 'csv' ? 'csv' : 'txt';
+  return `hf-downloader-models-${stamp}.${extension}`;
 }
 
 function isActionEnabled(job, action) {
@@ -625,9 +686,93 @@ function closeModels() {
   modelsModalEl.classList.add('hidden');
 }
 
+function closeModelExport() {
+  modelExportModalEl.classList.add('hidden');
+}
+
 async function openModels() {
   modelsModalEl.classList.remove('hidden');
   await Promise.all([refreshModels(), refreshModelScanStatus()]);
+}
+
+function selectedExportModels() {
+  const selected = new Set([...modelExportListEl.querySelectorAll('input[type="checkbox"]:checked')].map((input) => Number(input.value)));
+  return currentExportModels.filter((model) => selected.has(model.id));
+}
+
+function updateModelExportText() {
+  const selected = selectedExportModels();
+  modelExportCountEl.textContent = `${selected.length} selected`;
+  modelExportTextEl.value = modelExportRows(selected, modelExportFormatEl.value);
+}
+
+function setModelExportSelection(checked) {
+  modelExportListEl.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+    input.checked = checked;
+  });
+  updateModelExportText();
+}
+
+function openModelExport() {
+  currentExportModels = sortedModels(currentModels);
+  modelExportListEl.innerHTML = currentExportModels.map((model) => `
+    <label class="export-choice">
+      <input type="checkbox" value="${model.id}" checked>
+      ${truncateText(model.name, model.path || model.name)}
+      <small>${escapeHtml([model.format, model.quant, bytes(model.size_bytes)].filter(Boolean).join(' / '))}</small>
+    </label>
+  `).join('');
+  updateModelExportText();
+  modelExportModalEl.classList.remove('hidden');
+}
+
+async function saveModelExport() {
+  const text = modelExportTextEl.value.trimEnd();
+  if (!text) {
+    showMessage('Export text is empty', 'error');
+    return;
+  }
+
+  const format = modelExportFormatEl.value;
+  const name = exportFileName(format);
+  try {
+    const result = await api('/api/models/export-file', {
+      method: 'POST',
+      body: JSON.stringify({ suggestedName: name, text })
+    });
+    if (result.canceled) return;
+    showMessage('Model list exported', 'ok');
+    closeModelExport();
+    return;
+  } catch (error) {
+    if (!/Native save dialog is not available/i.test(error.message)) throw error;
+  }
+
+  if (window.showSaveFilePicker) {
+    const handle = await window.showSaveFilePicker({
+      suggestedName: name,
+      types: [{
+        description: format === 'csv' ? 'CSV file' : 'Text file',
+        accept: format === 'csv' ? { 'text/csv': ['.csv'] } : { 'text/plain': ['.txt'] }
+      }]
+    });
+    const writable = await handle.createWritable();
+    await writable.write(text);
+    await writable.close();
+  } else {
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  showMessage('Model list exported', 'ok');
+  closeModelExport();
 }
 
 function clearHfPreview() {
@@ -865,6 +1010,14 @@ document.querySelector('.models-table thead').addEventListener('click', (event) 
   renderModels(currentModels);
 });
 
+modelExportListEl.addEventListener('change', (event) => {
+  if (event.target.matches('input[type="checkbox"]')) {
+    updateModelExportText();
+  }
+});
+
+modelExportFormatEl.addEventListener('change', updateModelExportText);
+
 document.querySelector('#url-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
@@ -912,6 +1065,40 @@ document.addEventListener('click', async (event) => {
       await refreshModelScanStatus();
     } catch (error) {
       showMessage(error.message, 'error');
+    }
+    return;
+  }
+
+  if (action === 'open-model-export') {
+    openModelExport();
+    return;
+  }
+
+  if (action === 'close-model-export') {
+    closeModelExport();
+    return;
+  }
+
+  if (action === 'export-select-all') {
+    setModelExportSelection(true);
+    return;
+  }
+
+  if (action === 'export-select-none') {
+    setModelExportSelection(false);
+    return;
+  }
+
+  if (action === 'export-regenerate') {
+    updateModelExportText();
+    return;
+  }
+
+  if (action === 'save-model-export') {
+    try {
+      await saveModelExport();
+    } catch (error) {
+      if (error.name !== 'AbortError') showMessage(error.message, 'error');
     }
     return;
   }
@@ -1048,6 +1235,10 @@ document.addEventListener('click', async (event) => {
 
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
+  if (!modelExportModalEl.classList.contains('hidden')) {
+    closeModelExport();
+    return;
+  }
   if (!hfPreviewModalEl.classList.contains('hidden')) {
     closeHfPreview();
     return;

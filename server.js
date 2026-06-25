@@ -169,7 +169,7 @@ function publicFile(file, queue) {
   };
 }
 
-function createApp(queue) {
+function createApp(queue, options = {}) {
   const app = express();
   app.use(express.json({ limit: '1mb' }));
   app.use('/vendor/fontawesome', express.static(path.join(__dirname, 'node_modules', '@fortawesome', 'fontawesome-free')));
@@ -237,6 +237,16 @@ function createApp(queue) {
   app.post('/api/models/scan', asyncHandler(async (req, res) => {
     const roots = Array.isArray(req.body?.roots) ? saveModelRoots(req.body.roots) : getModelRoots();
     res.json(await scanModelRoots(roots));
+  }));
+
+  app.post('/api/models/export-file', asyncHandler(async (req, res) => {
+    if (typeof options.saveTextFile !== 'function') {
+      return res.status(501).json({ error: 'Native save dialog is not available' });
+    }
+    const text = String(req.body?.text || '');
+    if (!text.trim()) throw new Error('Export text is empty');
+    const suggestedName = String(req.body?.suggestedName || 'hf-downloader-models.txt');
+    res.json(await options.saveTextFile({ text, suggestedName }));
   }));
 
   app.get('/api/models/:id', (req, res) => {
@@ -419,7 +429,7 @@ function startServer(options = {}) {
     getPolicy: getDownloadPolicy
   });
 
-  const app = createApp(queue);
+  const app = createApp(queue, options);
   const port = Number(options.port ?? PORT);
   const server = app.listen(port, () => {
     if (options.log !== false) {

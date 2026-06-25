@@ -54,7 +54,20 @@ async function start() {
 
   try {
     const { startServer } = require('../server');
-    serverHandle = startServer({ port: 0, log: false });
+    serverHandle = startServer({
+      port: 0,
+      log: false,
+      saveTextFile: async ({ text, suggestedName }) => {
+        const result = await dialog.showSaveDialog(mainWindow, {
+          title: 'Export Models',
+          defaultPath: suggestedName || 'hf-downloader-models.txt',
+          filters: [{ name: 'Text files', extensions: ['txt'] }]
+        });
+        if (result.canceled || !result.filePath) return { ok: false, canceled: true };
+        await fs.promises.writeFile(result.filePath, text, 'utf8');
+        return { ok: true, path: result.filePath };
+      }
+    });
     log('server start requested');
   } catch (error) {
     log(`server start failed: ${error.stack || error.message}`);

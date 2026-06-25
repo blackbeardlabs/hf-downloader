@@ -4,6 +4,26 @@ All notable changes to HF Downloader will be tracked here.
 
 ## Unreleased
 
+
+
+## 1.1.2 - 2026-06-25
+
+### Added
+
+- Added Models export flow with selectable rows and editable export text before saving.
+- Added export formats for aligned TXT, CSV, and TSV.
+- Added Electron native save dialog support for model list exports.
+
+### Changed
+
+- Model table sort indicators now use FontAwesome arrows and only appear on the active sorted column.
+- Model export defaults to aligned plain text so column headers and values line up in monospaced editors.
+
+### Fixed
+
+- Fixed Settings modal resize handle placement after scrolling long modal content.
+- Fixed modal action buttons so they stay attached to the bottom of the modal while the body content scrolls.
+
 ## 1.1.1 - 2026-06-25
 
 ### Bug fix

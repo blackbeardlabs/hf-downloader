@@ -225,6 +225,7 @@
             <option value="safetensors">SafeTensors</option>
             <option value="diffusers">Diffusers</option>
           </select>
+          <button type="button" data-action="open-model-export">Export</button>
           <button type="button" data-action="scan-models">Scan now</button>
         </div>
         <div id="model-scan-status" class="model-scan-status">No scan running</div>
@@ -235,14 +236,14 @@
           <table class="models-table">
             <thead>
               <tr>
-                <th data-sort="name">Name</th>
-                <th data-sort="domain">Domain</th>
-                <th data-sort="format">Format</th>
-                <th data-sort="architecture">Arch</th>
-                <th data-sort="creator">Creator</th>
-                <th data-sort="quant">Quant</th>
-                <th data-sort="precision">Precision</th>
-                <th data-sort="size_bytes">Size</th>
+                <th data-sort="name">Name <span class="sort-icon"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></span></th>
+                <th data-sort="domain">Domain <span class="sort-icon"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></span></th>
+                <th data-sort="format">Format <span class="sort-icon"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></span></th>
+                <th data-sort="architecture">Arch <span class="sort-icon"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></span></th>
+                <th data-sort="creator">Creator <span class="sort-icon"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></span></th>
+                <th data-sort="quant">Quant <span class="sort-icon"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></span></th>
+                <th data-sort="precision">Precision <span class="sort-icon"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></span></th>
+                <th data-sort="size_bytes">Size <span class="sort-icon"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></span></th>
               </tr>
             </thead>
             <tbody id="models"></tbody>
@@ -250,6 +251,34 @@
         </div>
         <div class="modal-actions">
           <button type="button" data-action="close-models">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="model-export-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-panel export-modal-panel">
+        <div class="modal-head">
+          <h2>Export Models</h2>
+          <span id="model-export-count" class="modal-count">0 selected</span>
+        </div>
+        <div class="export-tools">
+          <select id="model-export-format" aria-label="Export format">
+            <option value="aligned">Aligned TXT</option>
+            <option value="csv">CSV</option>
+            <option value="tsv">TSV</option>
+          </select>
+          <button type="button" data-action="export-select-all">Select all</button>
+          <button type="button" data-action="export-select-none">Select none</button>
+          <button type="button" data-action="export-regenerate">Regenerate text</button>
+        </div>
+        <div id="model-export-list" class="export-list"></div>
+        <label class="export-text-label">
+          Export text
+          <textarea id="model-export-text" rows="10" spellcheck="false"></textarea>
+        </label>
+        <div class="modal-actions">
+          <button type="button" data-action="close-model-export">Cancel</button>
+          <button type="button" data-action="save-model-export">Save</button>
         </div>
       </div>
     </div>
