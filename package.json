@@ -13,9 +13,11 @@
     "electron:rebuild": "electron-rebuild -f -w better-sqlite3",
     "dist": "npm run electron:rebuild && electron-builder -c.npmRebuild=false",
     "dist:mac": "npm run electron:rebuild && electron-builder --mac dmg -c.npmRebuild=false",
-    "dist:win": "npm run electron:rebuild && electron-builder --win nsis portable -c.npmRebuild=false",
+    "dist:win": "electron-builder --win nsis portable --x64",
     "dist:linux": "electron-builder --linux",
-    "dist:all": "npm run electron:rebuild && electron-builder --mac dmg --win nsis portable --linux"
+    "dist:linux:appimage": "electron-builder --linux AppImage",
+    "dist:linux:deb": "electron-builder --linux deb",
+    "dist:all": "npm run dist:mac && npm run dist:win && npm run dist:linux"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.2.0",
@@ -62,11 +64,22 @@
     },
     "win": {
       "target": [
-        "nsis",
-        "portable"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "linux": {
+      "compression": "gz",
       "target": [
         {
           "target": "deb",
@@ -84,7 +97,10 @@
         }
       ],
       "category": "Network",
-      "maintainer": "blackbeardlabs"
+      "maintainer": "blackbeardlabs",
+      "fpm": [
+        "--deb-no-default-config-files"
+      ]
     }
   },
   "engines": {

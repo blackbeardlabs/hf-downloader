@@ -257,6 +257,13 @@ npm run dist:win
 npm run dist:linux
 ```
 
+Linux targets can also be built separately:
+
+```bash
+npm run dist:linux:appimage
+npm run dist:linux:deb
+```
+
 Or request all configured targets:
 
 ```bash
@@ -274,7 +281,8 @@ Packaging notes:
 - `aria2c` must either be bundled per platform or detected as a system dependency.
 - Current implementation detects system `aria2c`; bundling platform-specific `aria2c` binaries can be added later for a smoother release.
 - `better-sqlite3` is native. Build each OS package on that OS for reliable release artifacts. Cross-building from macOS can produce invalid native modules for Windows/Linux.
-- `better-sqlite3` must be rebuilt for the runtime that will load it. `npm start` rebuilds for Node.js. `npm run electron` and `npm run dist:*` rebuild for Electron and disable electron-builder's second native rebuild pass.
+- `better-sqlite3` must be rebuilt for the runtime that will load it. `npm start` rebuilds for Node.js. `npm run electron` and `npm run dist:mac` rebuild for the local Electron runtime; Windows/Linux package builds let electron-builder rebuild native dependencies for their target architecture.
+- Debian packages are most reliable when built on Linux. The project uses gzip compression and disables fpm's default `/etc` config-file handling to reduce macOS cross-build failures, but if `.deb` fails on macOS, build it on Linux with `npm run dist:linux:deb`.
 - macOS `.dmg` signing/notarization requires Apple Developer tooling for a polished public release.
 - Windows signing is optional for testing but useful for reducing security warnings.
 - Cross-building has limits; macOS packages are usually best built on macOS.
