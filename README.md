@@ -257,6 +257,8 @@ npm run dist:win
 npm run dist:linux
 ```
 
+Run those commands on their target OS. The app uses native `better-sqlite3`, so Linux and Windows packages should not be cross-built from macOS.
+
 Linux targets can also be built separately:
 
 ```bash
@@ -270,7 +272,9 @@ Or request all configured targets:
 npm run dist:all
 ```
 
-On macOS, `dist:all` builds macOS DMG, Windows x64 artifacts, and Linux AppImage artifacts. Build `.deb` packages on Linux with:
+`dist:all` builds only for the current OS. Build public release artifacts on each target OS so native dependencies are packaged correctly.
+
+Build `.deb` packages locally on Linux with:
 
 ```bash
 npm run dist:linux:deb
@@ -279,14 +283,14 @@ npm run dist:linux:deb
 Configured targets:
 
 - Windows: `.exe` installer or portable executable
-- Linux: `.AppImage` from `dist:all`; `.deb` and `.AppImage` can be built separately for both `x64` and `arm64`
+- Linux: `.deb` and `.AppImage`
 - macOS: `.dmg`
 
 Packaging notes:
 
 - `aria2c` must either be bundled per platform or detected as a system dependency.
 - Current implementation detects system `aria2c`; bundling platform-specific `aria2c` binaries can be added later for a smoother release.
-- `better-sqlite3` is native. Build each OS package on that OS for reliable release artifacts. Cross-building from macOS can produce invalid native modules for Windows/Linux.
+- `better-sqlite3` is native. Build each OS package on that OS for reliable release artifacts. Cross-building from macOS can produce invalid native modules for Windows/Linux, such as `invalid ELF header` on Linux.
 - `better-sqlite3` must be rebuilt for the runtime that will load it. `npm start` rebuilds for Node.js. `npm run electron` and `npm run dist:mac` rebuild for the local Electron runtime; Windows/Linux package builds let electron-builder rebuild native dependencies for their target architecture.
 - Debian packages are most reliable when built on Linux. If `.deb` fails on macOS, build it on Linux with `npm run dist:linux:deb`.
 - macOS `.dmg` signing/notarization requires Apple Developer tooling for a polished public release.
