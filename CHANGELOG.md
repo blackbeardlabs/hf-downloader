@@ -4,7 +4,11 @@ All notable changes to HF Downloader will be tracked here.
 
 ## Unreleased
 
+## 1.1.1 - 2026-06-25
 
+### Bug fix
+
+- Now, instead of using the entire JSON.stringify(config) field, only component keys (unet, vae, lora, etc.) and the folder name are used.
 
 ## 1.1.0 - 2026-06-25
 

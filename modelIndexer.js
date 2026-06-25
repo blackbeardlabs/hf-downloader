@@ -135,23 +135,45 @@ function inferArchitecture(name, metadata = {}) {
   return known.find(([needle]) => text.includes(needle))?.[1] || null;
 }
 
+const LLM_ARCHITECTURES = [
+  'deepseek', 'qwen', 'llama', 'mistral', 'mixtral', 'gemma', 'phi',
+  'minimax', 'glm', 'mimo', 'step', 'gpt', 'falcon', 'mpt', 'yi', 'baichuan',
+  'internlm', 'command', 'dbrx', 'jamba', 'olmo', 'openelm', 'exaone', 'bert',
+  't5', 'mamba', 'stablelm', 'starcoder', 'chameleon', 'arctic', 'nemotron',
+  'granite', 'solar', 'smollm', 'paligemma', 'pixtral', 'minicpm'
+];
+
+const VIDEO_ARCHITECTURES = ['wan', 'cogvideo', 'hunyuanvideo', 'ltx-video', 'mochi', 'allegro'];
+
+function isVideoName(name) {
+  const n = String(name || '').toLowerCase();
+  return n.includes('hunyuanvideo') || n.includes('cogvideo') ||
+    n.includes('wan2.') || n.includes('wan-i2v') || n.includes('wan-t2v');
+}
+
 function inferDomain(name, metadata = {}, tensorNames = []) {
-  const text = `${name} ${Object.values(metadata).join(' ')}`.toLowerCase();
+  const arch = compact(metadata['general.architecture'] || metadata.architecture || metadata.model_type);
+  const archLower = String(arch || '').toLowerCase();
+  const nameLower = String(name || '').toLowerCase();
   const tensors = tensorNames.slice(0, 200).join(' ').toLowerCase();
-  if (text.includes('embedding')) return 'embedding';
-  if (text.includes('controlnet')) return 'controlnet';
-  if (text.includes('lora') || tensors.includes('lora_')) return 'lora';
-  if (text.includes('vae') || tensors.includes('first_stage_model')) return 'vae';
-  if (text.includes('wan') || text.includes('hunyuanvideo') || text.includes('cogvideo') || text.includes('video')) return 'video';
-  if (
-    text.includes('stable-diffusion') ||
-    text.includes('sdxl') ||
-    text.includes('flux') ||
-    tensors.includes('diffusion_model') ||
-    tensors.includes('model.diffusion_model') ||
-    tensors.includes('conditioner.embedders') ||
-    tensors.includes('unet')
-  ) return 'image';
+
+  if (LLM_ARCHITECTURES.some((a) => archLower.startsWith(a))) return 'llm';
+  if (VIDEO_ARCHITECTURES.includes(archLower)) return 'video';
+
+  if (tensors.includes('lora_')) return 'lora';
+  if (tensors.includes('first_stage_model')) return 'vae';
+  if (tensors.includes('diffusion_model') || tensors.includes('model.diffusion_model') ||
+      tensors.includes('conditioner.embedders') || tensors.includes('unet')) {
+    return isVideoName(nameLower) ? 'video' : 'image';
+  }
+
+  if (nameLower.includes('embedding')) return 'embedding';
+  if (nameLower.includes('controlnet')) return 'controlnet';
+  if (nameLower.includes('lora')) return 'lora';
+  if (nameLower.includes('vae')) return 'vae';
+  if (isVideoName(nameLower)) return 'video';
+  if (nameLower.includes('stable-diffusion') || nameLower.includes('sdxl') || nameLower.includes('flux')) return 'image';
+
   return 'llm';
 }
 
@@ -352,11 +374,13 @@ function modelFromSafeTensors(filePath, rootDir, scanStamp) {
 }
 
 function domainFromDiffusers(config, modelPath) {
-  const text = `${JSON.stringify(config)} ${modelPath}`.toLowerCase();
-  if (text.includes('wan') || text.includes('hunyuanvideo') || text.includes('cogvideo') || text.includes('video')) return 'video';
-  if (text.includes('lora')) return 'lora';
-  if (text.includes('controlnet')) return 'controlnet';
-  if (text.includes('vae')) return 'vae';
+  const name = path.basename(modelPath).toLowerCase();
+  const componentKeys = Object.keys(config).filter((k) => !k.startsWith('_')).join(' ').toLowerCase();
+
+  if (isVideoName(name)) return 'video';
+  if (componentKeys.includes('lora')) return 'lora';
+  if (componentKeys.includes('controlnet')) return 'controlnet';
+  if (componentKeys.includes('vae')) return 'vae';
   return 'image';
 }
 
