@@ -249,53 +249,40 @@ Run the desktop app during development:
 npm run electron
 ```
 
-Build release artifacts:
+Build release artifacts. All commands below can be run from any OS and cross-build for the target platforms, since `better-sqlite3` prebuilt binaries are downloaded per platform:
 
 ```bash
-npm run dist:mac
-npm run dist:win
-npm run dist:linux
+npm run dist:mac      # macOS .dmg
+npm run dist:win      # Windows x64 .exe installer + portable
+npm run dist:linux    # Linux x64 .deb + .AppImage
+npm run dist:all      # all of the above
 ```
 
-Run those commands on their target OS. The app uses native `better-sqlite3`, so Linux and Windows packages should not be cross-built from macOS.
-
-Linux targets can also be built separately:
-
-```bash
-npm run dist:linux:appimage
-npm run dist:linux:deb
-```
-
-Or request all configured targets:
+Or request all configured targets at once:
 
 ```bash
 npm run dist:all
 ```
 
-`dist:all` builds only for the current OS. Build public release artifacts on each target OS so native dependencies are packaged correctly.
-
-Build `.deb` packages locally on Linux with:
+For Linux arm64:
 
 ```bash
-npm run dist:linux:deb
+npm run dist:linux:arm64
 ```
 
 Configured targets:
 
-- Windows: `.exe` installer or portable executable
-- Linux: `.deb` and `.AppImage`
+- Windows: `.exe` installer and portable executable (x64)
+- Linux: `.deb` and `.AppImage` (x64, arm64 via `dist:linux:arm64`)
 - macOS: `.dmg`
 
 Packaging notes:
 
 - `aria2c` must either be bundled per platform or detected as a system dependency.
 - Current implementation detects system `aria2c`; bundling platform-specific `aria2c` binaries can be added later for a smoother release.
-- `better-sqlite3` is native. Build each OS package on that OS for reliable release artifacts. Cross-building from macOS can produce invalid native modules for Windows/Linux, such as `invalid ELF header` on Linux.
-- `better-sqlite3` must be rebuilt for the runtime that will load it. `npm start` rebuilds for Node.js. `npm run electron` and `npm run dist:mac` rebuild for the local Electron runtime; Windows/Linux package builds let electron-builder rebuild native dependencies for their target architecture.
-- Debian packages are most reliable when built on Linux. If `.deb` fails on macOS, build it on Linux with `npm run dist:linux:deb`.
+- `better-sqlite3` is native. `npm start` rebuilds for Node.js. `npm run electron` and `npm run dist:mac` rebuild for the local Electron runtime; Windows/Linux package builds download prebuilt native binaries for the target architecture via `prebuild-install`.
 - macOS `.dmg` signing/notarization requires Apple Developer tooling for a polished public release.
 - Windows signing is optional for testing but useful for reducing security warnings.
-- Cross-building has limits; macOS packages are usually best built on macOS.
 
 ## Notes
 

@@ -13,9 +13,9 @@
     "electron:rebuild": "electron-rebuild -f -w better-sqlite3",
     "dist": "npm run electron:rebuild && electron-builder -c.npmRebuild=false",
     "dist:mac": "npm run electron:rebuild && electron-builder --mac dmg -c.npmRebuild=false",
-    "dist:win": "npm run electron:rebuild && electron-builder --win nsis portable --x64 -c.npmRebuild=false",
-    "dist:linux": "npm run electron:rebuild && electron-builder --linux deb AppImage -c.npmRebuild=false",
-    "dist:linux:arm64": "npm run electron:rebuild && electron-builder --linux deb AppImage --arm64 -c.npmRebuild=false",
+    "dist:win": "electron-builder --win nsis portable --x64",
+    "dist:linux": "electron-builder --linux deb AppImage --x64",
+    "dist:linux:arm64": "electron-builder --linux deb AppImage --arm64",
     "dist:all": "electron-builder --mac --win --linux"
   },
   "dependencies": {
