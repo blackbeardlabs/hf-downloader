@@ -6,7 +6,7 @@ All notable changes to HF Downloader will be tracked here.
 
 
 
-## 1.1.0 - 2026-06-24
+## 1.1.0 - 2026-06-25
 
 ### Added
 
