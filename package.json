@@ -14,10 +14,10 @@
     "dist": "npm run electron:rebuild && electron-builder -c.npmRebuild=false",
     "dist:mac": "npm run electron:rebuild && electron-builder --mac dmg -c.npmRebuild=false",
     "dist:win": "electron-builder --win nsis portable --x64",
-    "dist:linux": "electron-builder --linux",
-    "dist:linux:appimage": "electron-builder --linux AppImage",
-    "dist:linux:deb": "electron-builder --linux deb",
-    "dist:all": "npm run dist:mac && npm run dist:win && npm run dist:linux"
+    "dist:linux": "npm run dist:linux:appimage && npm run dist:linux:deb",
+    "dist:linux:appimage": "electron-builder --linux AppImage --x64 --arm64",
+    "dist:linux:deb": "electron-builder --linux deb --x64 --arm64",
+    "dist:all": "npm run dist:mac && npm run dist:win && npm run dist:linux:appimage"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.2.0",
@@ -79,7 +79,6 @@
       ]
     },
     "linux": {
-      "compression": "gz",
       "target": [
         {
           "target": "deb",
@@ -97,10 +96,7 @@
         }
       ],
       "category": "Network",
-      "maintainer": "blackbeardlabs",
-      "fpm": [
-        "--deb-no-default-config-files"
-      ]
+      "maintainer": "blackbeardlabs"
     }
   },
   "engines": {
