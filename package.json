@@ -13,14 +13,10 @@
     "electron:rebuild": "electron-rebuild -f -w better-sqlite3",
     "dist": "npm run electron:rebuild && electron-builder -c.npmRebuild=false",
     "dist:mac": "npm run electron:rebuild && electron-builder --mac dmg -c.npmRebuild=false",
-    "dist:win": "node scripts/guard-platform.js win32 Windows && electron-builder --win nsis portable --x64",
-    "dist:linux": "npm run dist:linux:appimage && npm run dist:linux:deb",
-    "dist:linux:appimage": "node scripts/guard-platform.js linux Linux && electron-builder --linux AppImage --x64",
-    "dist:linux:deb": "node scripts/guard-platform.js linux Linux && electron-builder --linux deb --x64",
-    "dist:linux:arm64": "npm run dist:linux:appimage:arm64 && npm run dist:linux:deb:arm64",
-    "dist:linux:appimage:arm64": "node scripts/guard-platform.js linux Linux && electron-builder --linux AppImage --arm64",
-    "dist:linux:deb:arm64": "node scripts/guard-platform.js linux Linux && electron-builder --linux deb --arm64",
-    "dist:all": "npm run dist"
+    "dist:win": "npm run electron:rebuild && electron-builder --win nsis portable --x64 -c.npmRebuild=false",
+    "dist:linux": "npm run electron:rebuild && electron-builder --linux deb AppImage -c.npmRebuild=false",
+    "dist:linux:arm64": "npm run electron:rebuild && electron-builder --linux deb AppImage --arm64 -c.npmRebuild=false",
+    "dist:all": "electron-builder --mac --win --linux"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.2.0",
