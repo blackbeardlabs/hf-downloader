@@ -20,12 +20,23 @@ const hfFileFilterEl = document.querySelector('#hf-file-filter');
 const hfPreviewModalEl = document.querySelector('#hf-preview-modal');
 const settingsModalEl = document.querySelector('#settings-modal');
 const settingsForm = document.querySelector('#settings-form');
+const modelsModalEl = document.querySelector('#models-modal');
+const modelsEl = document.querySelector('#models');
+const modelSearchEl = document.querySelector('#model-search');
+const modelDomainEl = document.querySelector('#model-domain');
+const modelFormatEl = document.querySelector('#model-format');
+const modelScanStatusEl = document.querySelector('#model-scan-status');
+const modelProgressFillEl = document.querySelector('#model-progress-fill');
+const modelCountEl = document.querySelector('#model-count');
 
 let selectedJobId = Number(localStorage.getItem('selectedJobId')) || null;
 let hfPreviewFiles = [];
 let settingsDefaults = null;
 let seenJobStatuses = new Map();
 let didLoadJobsOnce = false;
+let currentModels = [];
+let currentModelTotal = 0;
+let modelSort = { key: 'name', direction: 'asc' };
 const recentToasts = new Map();
 
 function persistForm(form, key) {
@@ -204,6 +215,28 @@ function downloadedLabel(item) {
   return `${downloaded} / ${bytes(total)}${suffix}`;
 }
 
+function modelMeta(value) {
+  return value ? escapeHtml(value) : '<span class="muted">-</span>';
+}
+
+function truncateText(value, title = value) {
+  const text = value || '';
+  return `<span class="truncate" title="${escapeHtml(title || text)}">${escapeHtml(text)}</span>`;
+}
+
+function compareValues(a, b) {
+  const an = Number(a);
+  const bn = Number(b);
+  if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn;
+  return String(a || '').localeCompare(String(b || ''), undefined, { numeric: true, sensitivity: 'base' });
+}
+
+function sortedModels(models) {
+  const { key, direction } = modelSort;
+  const factor = direction === 'desc' ? -1 : 1;
+  return [...models].sort((a, b) => compareValues(a[key], b[key]) * factor);
+}
+
 function isActionEnabled(job, action) {
   if (action === 'start') return job.status === 'queued' || job.status === 'failed';
   if (action === 'pause') return job.status === 'running';
@@ -253,7 +286,7 @@ function renderJobs(jobs) {
   jobsEl.innerHTML = jobs.map((job) => `
     <tr class="${job.id === selectedJobId ? 'selected' : ''}" data-job-id="${job.id}">
       <td class="cell-name">
-        <button class="link" data-action="select" data-id="${job.id}" type="button">${escapeHtml(job.name)}</button>
+        <button class="link truncate" data-action="select" data-id="${job.id}" type="button" title="${escapeHtml(job.name)}">${escapeHtml(job.name)}</button>
         <div class="job-meta">${escapeHtml(job.type)}</div>
       </td>
       <td><span class="status ${job.status}">${job.status}</span></td>
@@ -270,20 +303,22 @@ function renderJobs(jobs) {
 function renderFiles(files) {
   filesEl.innerHTML = files.map((file) => `
     <tr>
-      <td class="cell-name">${escapeHtml(file.relative_path)}</td>
+      <td class="cell-name">${truncateText(file.relative_path)}</td>
       <td><span class="status ${file.status}">${file.status}</span></td>
       <td>${progressBar(file.progress_percent)}</td>
       <td class="cell-bytes">${downloadedLabel(file)}</td>
       <td class="cell-number">${speed(file.speed_bps)}</td>
       <td class="cell-number">${eta(file.eta_seconds)}</td>
       <td class="cell-number">${file.attempts}</td>
-      <td class="error">${escapeHtml(file.last_error || '')}</td>
+      <td class="error">${truncateText(file.last_error || '')}</td>
     </tr>
   `).join('');
 }
 
 function storageKeyForTable(table) {
-  return `columnPercents:${table.classList.contains('jobs-table') ? 'jobs' : 'files'}`;
+  if (table.classList.contains('jobs-table')) return 'columnPercents:jobs';
+  if (table.classList.contains('models-table')) return 'columnPercents:models';
+  return 'columnPercents:files';
 }
 
 function tableHeaders(table) {
@@ -313,6 +348,10 @@ function applySavedColumnPercents(table) {
   try {
     const percents = JSON.parse(raw);
     if (!Array.isArray(percents)) return false;
+    if (percents.length !== tableHeaders(table).length) {
+      localStorage.removeItem(storageKeyForTable(table));
+      return false;
+    }
     applyColumnPercents(table, percents);
     return true;
   } catch {
@@ -324,6 +363,7 @@ function applySavedColumnPercents(table) {
 function clearOldColumnSettings() {
   localStorage.removeItem('columnWidths:jobs');
   localStorage.removeItem('columnWidths:files');
+  localStorage.removeItem('columnWidths:models');
 }
 
 function initResizableTable(table) {
@@ -389,6 +429,83 @@ function initResizableTable(table) {
   });
 }
 
+function modalStorageKey(panel) {
+  const modal = panel.closest('.modal');
+  return `modalSize:${modal?.id || 'default'}`;
+}
+
+function applySavedModalSize(panel) {
+  const raw = sessionStorage.getItem(modalStorageKey(panel));
+  if (!raw) return;
+  try {
+    const size = JSON.parse(raw);
+    const width = Number(size.width);
+    const height = Number(size.height);
+    const maxWidth = Math.max(360, window.innerWidth - 40);
+    const maxHeight = Math.max(280, window.innerHeight - 40);
+    if (Number.isFinite(width) && width >= 360) panel.style.width = `${Math.min(width, maxWidth)}px`;
+    if (Number.isFinite(height) && height >= 280) panel.style.height = `${Math.min(height, maxHeight)}px`;
+  } catch {
+    sessionStorage.removeItem(modalStorageKey(panel));
+  }
+}
+
+function saveModalSize(panel) {
+  sessionStorage.setItem(modalStorageKey(panel), JSON.stringify({
+    width: Math.round(panel.getBoundingClientRect().width),
+    height: Math.round(panel.getBoundingClientRect().height)
+  }));
+}
+
+function initResizableModals() {
+  document.querySelectorAll('.modal-panel').forEach((panel) => {
+    if (panel.dataset.modalResizableReady) return;
+    panel.dataset.modalResizableReady = 'true';
+    panel.classList.add('resizable-modal-panel');
+    applySavedModalSize(panel);
+
+    const handle = document.createElement('span');
+    handle.className = 'modal-resizer';
+    handle.title = 'Resize modal';
+    panel.appendChild(handle);
+
+    handle.addEventListener('dblclick', () => {
+      sessionStorage.removeItem(modalStorageKey(panel));
+      panel.style.width = '';
+      panel.style.height = '';
+    });
+
+    handle.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      handle.setPointerCapture(event.pointerId);
+
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const rect = panel.getBoundingClientRect();
+      const maxWidth = Math.max(360, window.innerWidth - 40);
+      const maxHeight = Math.max(280, window.innerHeight - 40);
+
+      const onMove = (moveEvent) => {
+        const nextWidth = Math.max(360, Math.min(maxWidth, rect.width + moveEvent.clientX - startX));
+        const nextHeight = Math.max(280, Math.min(maxHeight, rect.height + moveEvent.clientY - startY));
+        panel.style.width = `${Math.round(nextWidth)}px`;
+        panel.style.height = `${Math.round(nextHeight)}px`;
+      };
+
+      const onUp = (upEvent) => {
+        handle.releasePointerCapture(upEvent.pointerId);
+        handle.removeEventListener('pointermove', onMove);
+        handle.removeEventListener('pointerup', onUp);
+        saveModalSize(panel);
+      };
+
+      handle.addEventListener('pointermove', onMove);
+      handle.addEventListener('pointerup', onUp);
+    });
+  });
+}
+
 function hfPayloadFromForm() {
   const form = new FormData(hfForm);
   const payload = Object.fromEntries(form.entries());
@@ -446,6 +563,17 @@ function fillSettingsForm(policy) {
   settingsForm.cooldownSeconds.value = policy.restartLimits.cooldownSeconds;
 }
 
+function fillModelRoots(roots) {
+  settingsForm.modelRoots.value = (roots || []).join('\n');
+}
+
+function modelRootsFromSettingsForm() {
+  return String(settingsForm.modelRoots.value || '')
+    .split(/\r?\n/)
+    .map((root) => root.trim())
+    .filter(Boolean);
+}
+
 function policyFromSettingsForm() {
   return {
     autoRestartEnabled: settingsForm.autoRestartEnabled.checked,
@@ -475,9 +603,13 @@ function policyFromSettingsForm() {
 }
 
 async function openSettings() {
-  const data = await api('/api/settings/download-policy');
-  settingsDefaults = data.defaults;
-  fillSettingsForm(data.policy);
+  const [policyData, rootsData] = await Promise.all([
+    api('/api/settings/download-policy'),
+    api('/api/settings/model-roots')
+  ]);
+  settingsDefaults = policyData.defaults;
+  fillSettingsForm(policyData.policy);
+  fillModelRoots(rootsData.roots);
   settingsModalEl.classList.remove('hidden');
 }
 
@@ -489,11 +621,88 @@ function closeHfPreview() {
   hfPreviewModalEl.classList.add('hidden');
 }
 
+function closeModels() {
+  modelsModalEl.classList.add('hidden');
+}
+
+async function openModels() {
+  modelsModalEl.classList.remove('hidden');
+  await Promise.all([refreshModels(), refreshModelScanStatus()]);
+}
+
 function clearHfPreview() {
   hfPreviewFiles = [];
   hfFilesEl.innerHTML = '';
   hfFileFilterEl.value = '';
   hfFileCountEl.textContent = 'No files loaded';
+}
+
+function renderModels(models) {
+  document.querySelectorAll('.models-table th[data-sort]').forEach((th) => {
+    const active = th.dataset.sort === modelSort.key;
+    th.classList.toggle('sorted', active);
+    th.dataset.direction = active ? modelSort.direction : '';
+  });
+
+  const sorted = sortedModels(models);
+  const total = Number(currentModelTotal || sorted.length);
+  modelCountEl.textContent = total === sorted.length
+    ? `${total} model${total === 1 ? '' : 's'}`
+    : `${sorted.length} of ${total} models`;
+  modelsEl.innerHTML = sorted.map((model) => `
+    <tr>
+      <td class="cell-name">${truncateText(model.name, model.path || model.name)}</td>
+      <td><span class="status queued">${escapeHtml(model.domain)}</span></td>
+      <td>${truncateText(model.format)}</td>
+      <td>${model.architecture ? truncateText(model.architecture) : modelMeta(model.architecture)}</td>
+      <td>${model.creator ? truncateText(model.creator) : modelMeta(model.creator)}</td>
+      <td>${model.quant ? truncateText(model.quant) : modelMeta(model.quant)}</td>
+      <td>${model.precision ? truncateText(model.precision) : modelMeta(model.precision)}</td>
+      <td class="cell-bytes">${bytes(model.size_bytes)}</td>
+    </tr>
+  `).join('');
+}
+
+async function refreshModels() {
+  const params = new URLSearchParams();
+  if (modelSearchEl.value.trim()) params.set('search', modelSearchEl.value.trim());
+  if (modelDomainEl.value) params.set('domain', modelDomainEl.value);
+  if (modelFormatEl.value) params.set('format', modelFormatEl.value);
+  const suffix = params.toString() ? `?${params}` : '';
+  const { models, total } = await api(`/api/models${suffix}`);
+  currentModels = models;
+  currentModelTotal = Number(total || models.length);
+  renderModels(currentModels);
+}
+
+function renderModelScanStatus(status) {
+  if (!status) {
+    modelScanStatusEl.textContent = 'No scan running';
+    modelProgressFillEl.style.width = '0%';
+    return;
+  }
+  const rootCount = status.roots?.length || 0;
+  const total = Number(status.total || 0);
+  const current = Number(status.current || 0);
+  const percent = total > 0 ? Math.max(0, Math.min(100, (current / total) * 100)) : (status.running ? 12 : 0);
+  const phase = status.phase || (status.running ? 'scanning' : 'idle');
+  const pathText = status.currentPath ? ` - ${status.currentPath}` : '';
+  const base = status.running
+    ? `${phase}: ${current}${total ? `/${total}` : ''}, indexed ${status.indexed}, scanned ${status.scanned}${pathText}`
+    : status.finishedAt
+      ? `Last scan finished: ${status.indexed} indexed from ${status.scanned} candidates`
+      : `No scan running${rootCount ? ` (${rootCount} roots configured)` : ''}`;
+  const errors = status.errors?.length ? `, ${status.errors.length} recent errors` : '';
+  modelScanStatusEl.textContent = `${base}${errors}`;
+  modelScanStatusEl.className = status.error ? 'model-scan-status error' : 'model-scan-status';
+  modelProgressFillEl.style.width = status.finishedAt && !status.running ? '100%' : `${percent}%`;
+}
+
+async function refreshModelScanStatus() {
+  const status = await api('/api/models/scan/status');
+  renderModelScanStatus(status);
+  if (!status.running) await refreshModels();
+  return status;
 }
 
 async function importSelectedHfFiles() {
@@ -597,7 +806,8 @@ restoreForm(hfForm, 'hfFormDraft');
 restoreForm(document.querySelector('#url-form'), 'urlFormDraft');
 persistForm(hfForm, 'hfFormDraft');
 persistForm(document.querySelector('#url-form'), 'urlFormDraft');
-document.querySelectorAll('table.jobs-table, table.files-table').forEach(initResizableTable);
+document.querySelectorAll('table.jobs-table, table.files-table, table.models-table').forEach(initResizableTable);
+initResizableModals();
 hfForm.addEventListener('input', clearHfPreview);
 
 hfForm.addEventListener('submit', async (event) => {
@@ -612,16 +822,47 @@ hfForm.addEventListener('submit', async (event) => {
 settingsForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   try {
-    const data = await api('/api/settings/download-policy', {
-      method: 'PUT',
-      body: JSON.stringify(policyFromSettingsForm())
-    });
+    const [data] = await Promise.all([
+      api('/api/settings/download-policy', {
+        method: 'PUT',
+        body: JSON.stringify(policyFromSettingsForm())
+      }),
+      api('/api/settings/model-roots', {
+        method: 'PUT',
+        body: JSON.stringify({ roots: modelRootsFromSettingsForm() })
+      })
+    ]);
     fillSettingsForm(data.policy);
     showMessage('Settings saved', 'ok');
     closeSettings();
   } catch (error) {
     showMessage(error.message, 'error');
   }
+});
+
+[modelSearchEl, modelDomainEl, modelFormatEl].forEach((input) => {
+  input.addEventListener('input', () => {
+    refreshModels().catch((error) => showMessage(error.message, 'error'));
+  });
+});
+
+modelDomainEl.addEventListener('change', () => {
+  refreshModels().catch((error) => showMessage(error.message, 'error'));
+});
+
+modelFormatEl.addEventListener('change', () => {
+  refreshModels().catch((error) => showMessage(error.message, 'error'));
+});
+
+document.querySelector('.models-table thead').addEventListener('click', (event) => {
+  const header = event.target.closest('th[data-sort]');
+  if (!header) return;
+  const key = header.dataset.sort;
+  modelSort = {
+    key,
+    direction: modelSort.key === key && modelSort.direction === 'asc' ? 'desc' : 'asc'
+  };
+  renderModels(currentModels);
 });
 
 document.querySelector('#url-form').addEventListener('submit', async (event) => {
@@ -649,6 +890,31 @@ document.addEventListener('click', async (event) => {
   if (!target) return;
   const action = target.dataset.action;
   const id = Number(target.dataset.id);
+
+  if (action === 'open-models') {
+    try {
+      await openModels();
+    } catch (error) {
+      showMessage(error.message, 'error');
+    }
+    return;
+  }
+
+  if (action === 'close-models') {
+    closeModels();
+    return;
+  }
+
+  if (action === 'scan-models') {
+    try {
+      await api('/api/models/scan', { method: 'POST' });
+      showMessage('Model scan started', 'ok');
+      await refreshModelScanStatus();
+    } catch (error) {
+      showMessage(error.message, 'error');
+    }
+    return;
+  }
 
   if (action === 'open-settings') {
     try {
@@ -786,6 +1052,10 @@ document.addEventListener('keydown', (event) => {
     closeHfPreview();
     return;
   }
+  if (!modelsModalEl.classList.contains('hidden')) {
+    closeModels();
+    return;
+  }
   if (!settingsModalEl.classList.contains('hidden')) {
     closeSettings();
   }
@@ -798,3 +1068,8 @@ refreshTokenStatus()
   .catch(() => {});
 refresh();
 setInterval(refresh, 2000);
+setInterval(() => {
+  if (!modelsModalEl.classList.contains('hidden')) {
+    refreshModelScanStatus().catch((error) => showMessage(error.message, 'error'));
+  }
+}, 2000);

@@ -2,6 +2,7 @@ const { getSetting, setSetting, deleteSetting } = require('./db');
 
 const SETTINGS_KEY = 'downloadPolicy';
 const HF_TOKEN_KEY = 'hfToken';
+const MODEL_ROOTS_KEY = 'modelRoots';
 
 const defaultDownloadPolicy = {
   autoRestartEnabled: false,
@@ -124,6 +125,31 @@ function clearHFToken() {
   return getHFTokenStatus();
 }
 
+function normalizeModelRoots(value) {
+  const input = Array.isArray(value) ? value : [];
+  const roots = [];
+  const seen = new Set();
+  for (const item of input) {
+    const root = String(item || '').trim();
+    if (!root || seen.has(root)) continue;
+    if (root.includes('\0')) throw new Error('Model root contains invalid characters');
+    seen.add(root);
+    roots.push(root);
+  }
+  return roots;
+}
+
+function getModelRoots() {
+  const stored = getSetting(MODEL_ROOTS_KEY);
+  return normalizeModelRoots(stored?.roots || []);
+}
+
+function saveModelRoots(roots) {
+  const clean = normalizeModelRoots(roots);
+  setSetting(MODEL_ROOTS_KEY, { roots: clean });
+  return clean;
+}
+
 module.exports = {
   defaultDownloadPolicy,
   parseSpeed,
@@ -133,5 +159,7 @@ module.exports = {
   getHFToken,
   getHFTokenStatus,
   saveHFToken,
-  clearHFToken
+  clearHFToken,
+  getModelRoots,
+  saveModelRoots
 };

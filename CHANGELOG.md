@@ -6,6 +6,22 @@ All notable changes to HF Downloader will be tracked here.
 
 
 
+## 1.1.0 - 2026-06-24
+
+### Added
+
+- Added local Model Index modal inspired by LM Studio-style model lists.
+- Added configurable model roots in Settings.
+- Added recursive model scanner for GGUF files, SafeTensors files, and Diffusers folders.
+- Added model metadata extraction for architecture, creator, base/fine-tune hints, quantization, precision, size, and local path.
+- Added model search and domain/format filters.
+- Added model index API endpoints and scan status polling.
+- Grouped multi-part GGUF and SafeTensors shards into a single model row.
+- Added model scan progress status and progress bar, with scanner yields to keep the app responsive during large scans.
+- Added sortable columns in the Models modal.
+- Added resizable modals with per-session size persistence.
+- Improved creator inference for local model folders by preferring the parent of model container directories.
+
 ## 1.0.8 - 2026-06-24
 
 ### Fixed

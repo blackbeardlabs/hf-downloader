@@ -193,6 +193,22 @@ Auto restart is disabled by default.
 
 The dashboard `Settings` modal also manages the Hugging Face token and includes `Reset defaults` to restore the auto-restart configuration. The download forms persist their last values in the browser, so a refresh keeps your previously typed repo, target dir, and patterns.
 
+## Model Indexer
+
+Use the `Models` button to open the local model index. Configure model roots in `Settings` under `Model Indexer`, one directory per line, for example:
+
+```txt
+/home/you/Models
+```
+
+Click `Scan now` in the Models modal to recursively scan those roots. The scan status and progress bar show discovery and indexing progress while large model folders are being processed. The indexer detects:
+
+- `.gguf` files
+- `.safetensors` files
+- Diffusers folders containing `model_index.json`
+
+The model table shows domain, format, architecture, creator, base/fine-tune hints, quantization, precision, and size. Click a model table header to sort by that column. Hover over a model name to see its local path. Metadata is read from GGUF headers, SafeTensors headers, Diffusers configs, and filename/folder-name heuristics. Multi-part GGUF and SafeTensors shards such as `00001-of-00009` are grouped into one model row with a combined size. Some fields are best-effort because many local model files do not store creator, base model, or fine-tune information explicitly.
+
 ## API Endpoints
 
 ```txt
@@ -204,6 +220,12 @@ PUT    /api/settings/hf-token
 DELETE /api/settings/hf-token
 GET    /api/settings/download-policy
 PUT    /api/settings/download-policy
+GET    /api/settings/model-roots
+PUT    /api/settings/model-roots
+GET    /api/models
+GET    /api/models/:id
+POST   /api/models/scan
+GET    /api/models/scan/status
 GET    /api/jobs
 GET    /api/jobs/:id
 POST   /api/jobs
@@ -263,4 +285,5 @@ Packaging notes:
 - No TypeScript, bundler, frontend framework, account system, sync, cloud service, or telemetry is used.
 - Physical downloaded files are not deleted when a job is cancelled or deleted from the UI.
 - Default concurrency is one file at a time.
-- Press `Esc` to close the file preview and Settings modals.
+- Press `Esc` to close the file preview, Models, and Settings modals.
+- Modals can be resized from the bottom-right corner. Modal sizes are remembered for the current browser session.

@@ -11,7 +11,9 @@ const {
   getJobWithStats,
   getJob,
   listFiles,
-  countFiles
+  countFiles,
+  listModels,
+  getModel
 } = require('./db');
 const { DownloadQueue } = require('./queue');
 const { fetchRepoFiles } = require('./hf');
@@ -24,8 +26,11 @@ const {
   getHFToken,
   getHFTokenStatus,
   saveHFToken,
-  clearHFToken
+  clearHFToken,
+  getModelRoots,
+  saveModelRoots
 } = require('./settings');
+const { scanModelRoots, getScanStatus } = require('./modelIndexer');
 
 const PORT = Number(process.env.PORT || 3021);
 
@@ -201,6 +206,43 @@ function createApp(queue) {
 
   app.put('/api/settings/download-policy', (req, res) => {
     res.json({ policy: saveDownloadPolicy(req.body || {}) });
+  });
+
+  app.get('/api/settings/model-roots', (req, res) => {
+    res.json({ roots: getModelRoots() });
+  });
+
+  app.put('/api/settings/model-roots', (req, res) => {
+    res.json({ roots: saveModelRoots(req.body?.roots || []) });
+  });
+
+  app.get('/api/models', (req, res) => {
+    const filters = {
+      search: req.query.search ? String(req.query.search) : '',
+      domain: req.query.domain ? String(req.query.domain) : '',
+      format: req.query.format ? String(req.query.format) : ''
+    };
+    const models = listModels(filters);
+    const total = listModels({}).length;
+    res.json({
+      models,
+      total
+    });
+  });
+
+  app.get('/api/models/scan/status', (req, res) => {
+    res.json(getScanStatus());
+  });
+
+  app.post('/api/models/scan', asyncHandler(async (req, res) => {
+    const roots = Array.isArray(req.body?.roots) ? saveModelRoots(req.body.roots) : getModelRoots();
+    res.json(await scanModelRoots(roots));
+  }));
+
+  app.get('/api/models/:id', (req, res) => {
+    const model = getModel(req.params.id);
+    if (!model) return res.status(404).json({ error: 'model not found' });
+    res.json({ model });
   });
 
   app.get('/api/jobs', (req, res) => {

@@ -13,6 +13,7 @@
     <header>
       <h1>HF Downloader</h1>
       <div class="header-actions">
+        <button type="button" data-action="open-models">Models</button>
         <button type="button" data-action="open-settings">Settings</button>
         <div id="health" class="pill">checking</div>
       </div>
@@ -157,6 +158,12 @@
           </fieldset>
 
           <fieldset>
+            <legend>Model Indexer</legend>
+            <label>Model roots <textarea name="modelRoots" rows="4" placeholder="/home/you/Models"></textarea></label>
+            <small class="field-note">One local directory per line. These folders are scanned for GGUF, SafeTensors, and Diffusers models.</small>
+          </fieldset>
+
+          <fieldset>
             <legend>Rule mode</legend>
             <label class="radio-row"><input type="radio" name="applyRules" value="any"> Restart if any enabled rule matches</label>
             <label class="radio-row"><input type="radio" name="applyRules" value="all"> Restart only if all enabled rules match</label>
@@ -191,6 +198,60 @@
           <button type="submit">Save</button>
         </div>
       </form>
+    </div>
+
+    <div id="models-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-panel wide-modal">
+        <div class="modal-head">
+          <h2>Model Index</h2>
+          <span id="model-count" class="modal-count">0 models</span>
+        </div>
+        <div class="model-tools">
+          <input id="model-search" type="search" placeholder="Filter models">
+          <select id="model-domain">
+            <option value="">All domains</option>
+            <option value="llm">LLM</option>
+            <option value="embedding">Embedding</option>
+            <option value="image">Image</option>
+            <option value="video">Video</option>
+            <option value="lora">LoRA</option>
+            <option value="vae">VAE</option>
+            <option value="controlnet">ControlNet</option>
+            <option value="unknown">Unknown</option>
+          </select>
+          <select id="model-format">
+            <option value="">All formats</option>
+            <option value="gguf">GGUF</option>
+            <option value="safetensors">SafeTensors</option>
+            <option value="diffusers">Diffusers</option>
+          </select>
+          <button type="button" data-action="scan-models">Scan now</button>
+        </div>
+        <div id="model-scan-status" class="model-scan-status">No scan running</div>
+        <div class="model-progress">
+          <div id="model-progress-fill" class="model-progress-fill"></div>
+        </div>
+        <div class="table-wrap model-table-wrap">
+          <table class="models-table">
+            <thead>
+              <tr>
+                <th data-sort="name">Name</th>
+                <th data-sort="domain">Domain</th>
+                <th data-sort="format">Format</th>
+                <th data-sort="architecture">Arch</th>
+                <th data-sort="creator">Creator</th>
+                <th data-sort="quant">Quant</th>
+                <th data-sort="precision">Precision</th>
+                <th data-sort="size_bytes">Size</th>
+              </tr>
+            </thead>
+            <tbody id="models"></tbody>
+          </table>
+        </div>
+        <div class="modal-actions">
+          <button type="button" data-action="close-models">Close</button>
+        </div>
+      </div>
     </div>
 
     <script src="/app.js"></script>

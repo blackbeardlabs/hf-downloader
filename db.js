@@ -43,6 +43,27 @@ CREATE TABLE IF NOT EXISTS settings (
   value_json TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS model_index (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  root_dir TEXT NOT NULL,
+  path TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  format TEXT NOT NULL,
+  domain TEXT NOT NULL,
+  architecture TEXT,
+  creator TEXT,
+  base_model TEXT,
+  finetune TEXT,
+  quant TEXT,
+  params TEXT,
+  precision TEXT,
+  context_length INTEGER,
+  size_bytes INTEGER DEFAULT 0,
+  modified_at TEXT,
+  metadata_json TEXT,
+  scanned_at TEXT NOT NULL
+);
 `);
 
 function now() {
@@ -210,6 +231,91 @@ function deleteSetting(key) {
   return db.prepare('DELETE FROM settings WHERE key = ?').run(key);
 }
 
+function listModels(filters = {}) {
+  const clauses = [];
+  const values = [];
+  if (filters.domain) {
+    clauses.push('domain = ?');
+    values.push(filters.domain);
+  }
+  if (filters.format) {
+    clauses.push('format = ?');
+    values.push(filters.format);
+  }
+  if (filters.search) {
+    clauses.push(`(
+      name LIKE ?
+      OR path LIKE ?
+      OR architecture LIKE ?
+      OR creator LIKE ?
+      OR quant LIKE ?
+    )`);
+    const needle = `%${filters.search}%`;
+    values.push(needle, needle, needle, needle, needle);
+  }
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  return db.prepare(`
+    SELECT * FROM model_index
+    ${where}
+    ORDER BY domain ASC, name ASC, path ASC
+  `).all(...values);
+}
+
+function getModel(id) {
+  return db.prepare('SELECT * FROM model_index WHERE id = ?').get(id);
+}
+
+function upsertModel(model) {
+  const stamp = model.scannedAt || now();
+  db.prepare(`
+    INSERT INTO model_index (
+      root_dir, path, name, format, domain, architecture, creator, base_model,
+      finetune, quant, params, precision, context_length, size_bytes,
+      modified_at, metadata_json, scanned_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(path) DO UPDATE SET
+      root_dir = excluded.root_dir,
+      name = excluded.name,
+      format = excluded.format,
+      domain = excluded.domain,
+      architecture = excluded.architecture,
+      creator = excluded.creator,
+      base_model = excluded.base_model,
+      finetune = excluded.finetune,
+      quant = excluded.quant,
+      params = excluded.params,
+      precision = excluded.precision,
+      context_length = excluded.context_length,
+      size_bytes = excluded.size_bytes,
+      modified_at = excluded.modified_at,
+      metadata_json = excluded.metadata_json,
+      scanned_at = excluded.scanned_at
+  `).run(
+    model.rootDir,
+    model.path,
+    model.name,
+    model.format,
+    model.domain,
+    model.architecture || null,
+    model.creator || null,
+    model.baseModel || null,
+    model.finetune || null,
+    model.quant || null,
+    model.params || null,
+    model.precision || null,
+    model.contextLength || null,
+    model.sizeBytes || 0,
+    model.modifiedAt || null,
+    JSON.stringify(model.metadata || {}),
+    stamp
+  );
+}
+
+function deleteModelsNotScannedAt(stamp) {
+  return db.prepare('DELETE FROM model_index WHERE scanned_at != ?').run(stamp);
+}
+
 module.exports = {
   db,
   now,
@@ -229,5 +335,9 @@ module.exports = {
   deleteJob,
   getSetting,
   setSetting,
-  deleteSetting
+  deleteSetting,
+  listModels,
+  getModel,
+  upsertModel,
+  deleteModelsNotScannedAt
 };
