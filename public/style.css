@@ -361,7 +361,6 @@ button:disabled {
   border-bottom: 0;
   border-top: 1px solid #e7eaee;
   justify-content: flex-end;
-  margin-top: auto;
 }
 
 .modal-count {
@@ -372,6 +371,7 @@ button:disabled {
 
 .settings-grid {
   display: grid;
+  flex: 1 1 auto;
   gap: 14px;
   min-height: 0;
   overflow: auto;
@@ -654,7 +654,6 @@ th {
 
 .model-table-wrap {
   flex: 1 1 auto;
-  max-height: 58vh;
   min-height: 0;
   overflow: auto;
 }
@@ -748,7 +747,7 @@ th {
   border: 0;
   border-radius: 0;
   flex: 1 1 auto;
-  max-height: 56vh;
+  max-height: none;
   min-height: 0;
   margin: 0;
 }
