@@ -234,6 +234,10 @@ class DownloadQueue {
         const diskSize = finalFileSize(latestFile);
         const size = diskSize || latestFile.size || latestFile.downloaded || file.size || file.downloaded || null;
         updateFile(file.id, { status: 'completed', size, downloaded: size, last_error: null });
+      } else if (result.nonRetryable) {
+        this.monitor.stop();
+        updateFile(file.id, { status: 'failed', last_error: result.error || 'Download failed' });
+        updateJob(job.id, { status: 'failed', error: result.error || 'Download failed' });
       } else {
         updateFile(file.id, { status: 'queued', last_error: result.error || 'Download failed' });
       }

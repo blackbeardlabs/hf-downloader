@@ -43,6 +43,50 @@ function parseAria2Progress(text) {
   return Object.keys(progress).length ? progress : null;
 }
 
+function httpStatusFromMessage(message) {
+  const text = String(message || '');
+  const patterns = [
+    /\bstatus\s*=\s*(\d{3})\b/i,
+    /\bstatus\s+(\d{3})\b/i,
+    /\bHTTP(?:\/\d(?:\.\d)?)?\s+(\d{3})\b/i,
+    /\bresponse\s+status\s+is\s+(\d{3})\b/i
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) return Number(match[1]);
+  }
+  return null;
+}
+
+function classifyDownloadFailure(message, file) {
+  const status = httpStatusFromMessage(message);
+  const url = String(file?.url || '');
+  const text = String(message || '').toLowerCase();
+  const isHuggingFace = /(^|\.)huggingface\.co\//i.test(url);
+  const authFailure = status === 401 || status === 403;
+
+  if (authFailure) {
+    const hint = isHuggingFace
+      ? 'Hugging Face access denied. If this is a gated repo, open the repo in your browser, agree/request access with the same account, save a valid HF token in Settings, then resume the job.'
+      : 'Download access denied. Check authentication or permissions.';
+    return {
+      httpStatus: status,
+      nonRetryable: true,
+      error: `${hint}\n\n${message}`
+    };
+  }
+
+  if (isHuggingFace && /\b(gated|restricted|access request|terms|license|unauthorized|forbidden)\b/i.test(text)) {
+    return {
+      httpStatus: status,
+      nonRetryable: true,
+      error: `Hugging Face gated repo access is required. Open the repo in your browser, agree/request access with the same account, save a valid HF token in Settings, then resume the job.\n\n${message}`
+    };
+  }
+
+  return { httpStatus: status, nonRetryable: false, error: message };
+}
+
 function runAria2(file, options = {}) {
   fs.mkdirSync(file.output_dir, { recursive: true });
   const token = typeof options.getToken === 'function' ? options.getToken() : options.token;
@@ -106,7 +150,8 @@ function runAria2(file, options = {}) {
         return;
       }
       const message = stderr || stdout || `aria2c exited with code ${code || 'none'} signal ${signal || 'none'}`;
-      resolve({ ok: false, error: maskToken(message.trim(), token), code, signal });
+      const failure = classifyDownloadFailure(maskToken(message.trim(), token), file);
+      resolve({ ok: false, ...failure, code, signal });
     });
   });
 
@@ -116,5 +161,6 @@ function runAria2(file, options = {}) {
 module.exports = {
   runAria2,
   maskToken,
-  parseAria2Progress
+  parseAria2Progress,
+  classifyDownloadFailure
 };

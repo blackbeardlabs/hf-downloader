@@ -56,6 +56,40 @@ function downloadUrl(repoId, repoType, revision, relativePath) {
   return parts.join('/');
 }
 
+function repoUrl(repoId, repoType = 'model') {
+  const prefix = repoPrefixes[repoType]?.download;
+  const parts = [HF_BASE];
+  if (prefix) parts.push(prefix);
+  parts.push(repoId);
+  return parts.join('/');
+}
+
+function parseErrorText(text) {
+  if (!text) return '';
+  try {
+    const data = JSON.parse(text);
+    return data.error || data.message || text;
+  } catch {
+    return text;
+  }
+}
+
+function huggingFaceApiError(status, text, repoId, repoType) {
+  const message = parseErrorText(text).slice(0, 500);
+  const lower = message.toLowerCase();
+  const link = repoUrl(repoId, repoType);
+
+  if (status === 401) {
+    return new Error(`Hugging Face authentication required for ${repoId}. Save a valid HF token in Settings, then try again. Repo: ${link}`);
+  }
+
+  if (status === 403 || /\b(gated|restricted|access request|terms|license|forbidden)\b/.test(lower)) {
+    return new Error(`Hugging Face gated repo access is required for ${repoId}. Open ${link} in your browser, agree/request access with the same account used for your token, then try again.`);
+  }
+
+  return new Error(`Hugging Face API error ${status}: ${message}`);
+}
+
 async function fetchRepoFiles({ repoId, repoType = 'model', revision = 'main', include = [], exclude = [], token }) {
   if (!repoId || typeof repoId !== 'string' || !repoId.includes('/')) {
     throw new Error('repoId must look like owner/repo-name');
@@ -71,7 +105,7 @@ async function fetchRepoFiles({ repoId, repoType = 'model', revision = 'main', i
 
   if (!response.ok) {
     const text = await response.text().catch(() => '');
-    throw new Error(`Hugging Face API error ${response.status}: ${text.slice(0, 300)}`);
+    throw huggingFaceApiError(response.status, text, repoId, repoType);
   }
 
   const entries = await response.json();
@@ -95,5 +129,7 @@ async function fetchRepoFiles({ repoId, repoType = 'model', revision = 'main', i
 module.exports = {
   fetchRepoFiles,
   shouldInclude,
-  downloadUrl
+  downloadUrl,
+  repoUrl,
+  huggingFaceApiError
 };

@@ -6,6 +6,13 @@ All notable changes to HF Downloader will be tracked here.
 
 
 
+## 1.1.3 - 2026-06-28
+
+### Fixed
+
+- Detect Hugging Face gated/auth download failures and stop retrying them endlessly.
+- Improved Hugging Face API error messages for authentication and gated repo access.
+
 ## 1.1.2 - 2026-06-25
 
 ### Added
