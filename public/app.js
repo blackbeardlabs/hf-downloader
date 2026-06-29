@@ -33,6 +33,7 @@ const modelExportListEl = document.querySelector('#model-export-list');
 const modelExportTextEl = document.querySelector('#model-export-text');
 const modelExportCountEl = document.querySelector('#model-export-count');
 const modelExportFormatEl = document.querySelector('#model-export-format');
+const modelShowIgnoredEl = document.querySelector('#model-show-ignored');
 const readmeModalEl = document.querySelector('#model-readme-modal');
 const readmeTitleEl = document.querySelector('#model-readme-title');
 const readmeBodyEl = document.querySelector('#model-readme-body');
@@ -869,9 +870,9 @@ function renderModels(models) {
     ? `${total} model${total === 1 ? '' : 's'}`
     : `${sorted.length} of ${total} models`;
   modelsEl.innerHTML = sorted.map((model) => `
-    <tr>
+    <tr class="${model.ignored ? 'ignored-model' : ''}">
       <td class="cell-name"><button class="link truncate model-name-link" data-action="open-readme" data-id="${model.id}" type="button" title="${escapeHtml(model.path || model.name)}">${escapeHtml(model.name)}</button></td>
-      <td><span class="status queued">${escapeHtml(model.domain)}</span></td>
+      <td><span class="status ${model.ignored ? 'cancelled' : 'queued'}">${escapeHtml(model.domain)}</span></td>
       <td>${truncateText(model.format)}</td>
       <td>${model.architecture ? truncateText(model.architecture) : modelMeta(model.architecture)}</td>
       <td>${model.creator ? truncateText(model.creator) : modelMeta(model.creator)}</td>
@@ -887,6 +888,7 @@ async function refreshModels() {
   if (modelSearchEl.value.trim()) params.set('search', modelSearchEl.value.trim());
   if (modelDomainEl.value) params.set('domain', modelDomainEl.value);
   if (modelFormatEl.value) params.set('format', modelFormatEl.value);
+  if (modelShowIgnoredEl.checked) params.set('includeIgnored', 'true');
   const suffix = params.toString() ? `?${params}` : '';
   const { models, total } = await api(`/api/models${suffix}`);
   currentModels = models;
@@ -1075,6 +1077,10 @@ modelDomainEl.addEventListener('change', () => {
 });
 
 modelFormatEl.addEventListener('change', () => {
+  refreshModels().catch((error) => showMessage(error.message, 'error'));
+});
+
+modelShowIgnoredEl.addEventListener('change', () => {
   refreshModels().catch((error) => showMessage(error.message, 'error'));
 });
 

@@ -4,6 +4,13 @@ All notable changes to HF Downloader will be tracked here.
 
 ## Unreleased
 
+## 1.3.3 - 2026-06-29
+
+### Added
+
+- Added `Show ignored files` checkbox in the Models modal to reveal filtered files (mmproj, imatrix) that are hidden by default.
+- Ignored models are displayed with muted styling to distinguish them from regular models.
+
 
 ## 1.3.2 - 2026-06-29
 
@@ -11,6 +18,7 @@ All notable changes to HF Downloader will be tracked here.
 
 - README links show the target URL on hover.
 - Clicking a README link asks for confirmation before opening it in the default browser. The app never navigates to links internally.
+
 
 ## 1.3.1 - 2026-06-29
 

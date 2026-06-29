@@ -62,9 +62,16 @@ CREATE TABLE IF NOT EXISTS model_index (
   size_bytes INTEGER DEFAULT 0,
   modified_at TEXT,
   metadata_json TEXT,
-  scanned_at TEXT NOT NULL
+  scanned_at TEXT NOT NULL,
+  ignored INTEGER DEFAULT 0
 );
 `);
+
+try {
+  db.prepare('ALTER TABLE model_index ADD COLUMN ignored INTEGER DEFAULT 0').run();
+} catch {
+  // Column already exists
+}
 
 function now() {
   return new Date().toISOString();
@@ -253,6 +260,9 @@ function listModels(filters = {}) {
     const needle = `%${filters.search}%`;
     values.push(needle, needle, needle, needle, needle);
   }
+  if (!filters.includeIgnored) {
+    clauses.push('ignored = 0');
+  }
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
   return db.prepare(`
     SELECT * FROM model_index
@@ -271,9 +281,9 @@ function upsertModel(model) {
     INSERT INTO model_index (
       root_dir, path, name, format, domain, architecture, creator, base_model,
       finetune, quant, params, precision, context_length, size_bytes,
-      modified_at, metadata_json, scanned_at
+      modified_at, metadata_json, scanned_at, ignored
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(path) DO UPDATE SET
       root_dir = excluded.root_dir,
       name = excluded.name,
@@ -290,7 +300,8 @@ function upsertModel(model) {
       size_bytes = excluded.size_bytes,
       modified_at = excluded.modified_at,
       metadata_json = excluded.metadata_json,
-      scanned_at = excluded.scanned_at
+      scanned_at = excluded.scanned_at,
+      ignored = excluded.ignored
   `).run(
     model.rootDir,
     model.path,
@@ -308,7 +319,8 @@ function upsertModel(model) {
     model.sizeBytes || 0,
     model.modifiedAt || null,
     JSON.stringify(model.metadata || {}),
-    stamp
+    stamp,
+    model.ignored ? 1 : 0
   );
 }
 

@@ -542,6 +542,7 @@ async function collectGroups(rootDir, currentDir, groups, counter) {
   }
 
   const modelFiles = [];
+  const ignoredFiles = [];
   for (const entry of entries) {
     const full = path.join(currentDir, entry.name);
     if (entry.isSymbolicLink()) continue;
@@ -549,13 +550,21 @@ async function collectGroups(rootDir, currentDir, groups, counter) {
       await collectGroups(rootDir, full, groups, counter);
       continue;
     }
-    if (entry.isFile() && SUPPORTED_EXTENSIONS.has(path.extname(entry.name).toLowerCase()) && !isIgnoredModelFile(full)) {
-      modelFiles.push(full);
+    if (entry.isFile() && SUPPORTED_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
+      if (isIgnoredModelFile(full)) {
+        ignoredFiles.push(full);
+      } else {
+        modelFiles.push(full);
+      }
     }
   }
 
   for (const group of groupModelFiles(modelFiles)) {
     groups.push({ type: 'file-group', rootDir, group, key: group.key });
+  }
+
+  for (const group of groupModelFiles(ignoredFiles)) {
+    groups.push({ type: 'file-group', rootDir, group, key: group.key, ignored: true });
   }
 }
 
@@ -579,6 +588,7 @@ async function indexGroups(groups, scanStamp) {
         model = modelFromFileGroup(item.group, item.rootDir, scanStamp);
       }
       if (model) {
+        model.ignored = item.ignored || false;
         upsertModel(model);
         scanStatus.indexed += 1;
       }
