@@ -19,7 +19,8 @@ const scanStatus = {
 
 const SUPPORTED_EXTENSIONS = new Set(['.gguf', '.safetensors']);
 const IGNORED_MODEL_NAME_PATTERNS = [
-  /(^|[-_.\s])mmproj([-_.\s]|$)/i
+  /(^|[-_.\s])mmproj([-_.\s]|$)/i,
+  /(^|[-_.\s])imatrix([-_.\s]|$)/i
 ];
 
 function yieldToLoop() {

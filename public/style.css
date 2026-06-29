@@ -347,6 +347,112 @@ button:disabled {
   width: min(940px, 100%);
 }
 
+.readme-modal-panel {
+  width: min(820px, 100%);
+}
+
+.model-readme-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+
+.model-readme-body pre {
+  background: #f1f3f5;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+  overflow: auto;
+  padding: 12px 14px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.model-readme-body h1,
+.model-readme-body h2,
+.model-readme-body h3,
+.model-readme-body h4,
+.model-readme-body h5,
+.model-readme-body h6 {
+  margin: 0.7em 0 0.4em;
+}
+
+.model-readme-body h1 { font-size: 22px; }
+.model-readme-body h2 { font-size: 18px; }
+.model-readme-body h3 { font-size: 16px; }
+
+.model-readme-body p {
+  line-height: 1.6;
+  margin: 0 0 0.8em;
+}
+
+.model-readme-body ul,
+.model-readme-body ol {
+  margin: 0 0 0.8em;
+  padding-left: 1.5em;
+}
+
+.model-readme-body li {
+  margin-bottom: 0.3em;
+}
+
+.model-readme-body code {
+  background: #f1f3f5;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  padding: 2px 5px;
+}
+
+.model-readme-body pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.model-readme-body blockquote {
+  border-left: 4px solid #dfe3e8;
+  color: #6b7480;
+  margin: 0 0 0.8em;
+  padding: 8px 14px;
+}
+
+.model-readme-body a {
+  color: #22577a;
+}
+
+.model-readme-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+.model-readme-body table {
+  border-collapse: collapse;
+  margin: 0 0 0.8em;
+  width: 100%;
+}
+
+.model-readme-body table th,
+.model-readme-body table td {
+  border: 1px solid #dfe3e8;
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.model-readme-body table th {
+  background: #f6f7f9;
+  font-size: 13px;
+  text-transform: none;
+}
+
+.model-readme-body hr {
+  border: 0;
+  border-top: 1px solid #e7eaee;
+  margin: 1em 0;
+}
+
 .modal-head,
 .modal-actions {
   align-items: center;
@@ -500,6 +606,14 @@ th {
 
 .models-table th[data-sort] {
   cursor: pointer;
+}
+
+.model-name-link {
+  cursor: pointer;
+}
+
+.model-name-link:hover {
+  text-decoration: underline;
 }
 
 .sort-icon {

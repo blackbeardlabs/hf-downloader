@@ -255,6 +255,18 @@
       </div>
     </div>
 
+    <div id="model-readme-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-panel readme-modal-panel">
+        <div class="modal-head">
+          <h2 id="model-readme-title">README</h2>
+        </div>
+        <div id="model-readme-body" class="model-readme-body"></div>
+        <div class="modal-actions">
+          <button type="button" data-action="close-readme">Close</button>
+        </div>
+      </div>
+    </div>
+
     <div id="model-export-modal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-panel export-modal-panel">
         <div class="modal-head">
@@ -283,6 +295,7 @@
       </div>
     </div>
 
+    <script src="/vendor/marked/marked.umd.js"></script>
     <script src="/app.js"></script>
   </body>
 </html>

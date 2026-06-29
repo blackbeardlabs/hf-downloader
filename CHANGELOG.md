@@ -5,6 +5,16 @@ All notable changes to HF Downloader will be tracked here.
 ## Unreleased
 
 
+## 1.3.0 - 2026-06-29
+
+### Added
+
+- Clicking a model name in the Models modal opens a README viewer for the model's `README.md` if available.
+- README content is rendered as markdown (headings, code blocks, tables, lists, images, etc.).
+- Shows a toast notification when a model has no `README.md`.
+- Filtered `imatrix` files from model index scans, matching the existing `mmproj` filter.
+
+
 
 ## 1.2.0 - 2026-06-29
 

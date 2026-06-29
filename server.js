@@ -196,6 +196,7 @@ function createApp(queue, options = {}) {
   const app = express();
   app.use(express.json({ limit: '1mb' }));
   app.use('/vendor/fontawesome', express.static(path.join(__dirname, 'node_modules', '@fortawesome', 'fontawesome-free')));
+  app.use('/vendor/marked', express.static(path.join(__dirname, 'node_modules', 'marked', 'lib')));
   app.use(express.static(path.join(__dirname, 'public')));
 
   app.get('/api/health', (req, res) => {
@@ -276,6 +277,48 @@ function createApp(queue, options = {}) {
     const model = getModel(req.params.id);
     if (!model) return res.status(404).json({ error: 'model not found' });
     res.json({ model });
+  });
+
+  app.get('/api/models/:id/readme', (req, res) => {
+    const model = getModel(req.params.id);
+    if (!model) return res.status(404).json({ error: 'model not found' });
+
+    const containerDir = model.format === 'diffusers'
+      ? model.path
+      : path.dirname(model.path);
+
+    function findReadme(dir, depth = 0) {
+      if (depth > 3) return null;
+      const candidate = path.join(dir, 'README.md');
+      if (fs.existsSync(candidate)) {
+        try {
+          const stat = fs.statSync(candidate);
+          if (stat.isFile()) return candidate;
+        } catch {}
+      }
+      if (depth >= 3) return null;
+      let entries = [];
+      try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+      } catch {
+        return null;
+      }
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const found = findReadme(path.join(dir, entry.name), depth + 1);
+        if (found) return found;
+      }
+      return null;
+    }
+
+    const readmePath = findReadme(containerDir);
+    if (!readmePath) return res.status(404).json({ error: 'No README.md found for this model' });
+    try {
+      const content = fs.readFileSync(readmePath, 'utf8');
+      res.json({ content });
+    } catch {
+      res.status(404).json({ error: 'No README.md found for this model' });
+    }
   });
 
   app.get('/api/jobs', (req, res) => {

@@ -33,6 +33,9 @@ const modelExportListEl = document.querySelector('#model-export-list');
 const modelExportTextEl = document.querySelector('#model-export-text');
 const modelExportCountEl = document.querySelector('#model-export-count');
 const modelExportFormatEl = document.querySelector('#model-export-format');
+const readmeModalEl = document.querySelector('#model-readme-modal');
+const readmeTitleEl = document.querySelector('#model-readme-title');
+const readmeBodyEl = document.querySelector('#model-readme-body');
 
 let selectedJobId = Number(localStorage.getItem('selectedJobId')) || null;
 let hfPreviewFiles = [];
@@ -729,6 +732,29 @@ function closeModelExport() {
   modelExportModalEl.classList.add('hidden');
 }
 
+function closeReadme() {
+  readmeModalEl.classList.add('hidden');
+}
+
+async function openReadme(modelId) {
+  try {
+    const { model } = await api(`/api/models/${modelId}`);
+    readmeTitleEl.textContent = model.name;
+    readmeBodyEl.innerHTML = '<div class="loading">Loading…</div>';
+    readmeModalEl.classList.remove('hidden');
+    const { content } = await api(`/api/models/${modelId}/readme`);
+    readmeBodyEl.innerHTML = marked.parse(content);
+  } catch (error) {
+    if (error.message.includes('No README.md')) {
+      showToast('No README.md found for this model', 'info');
+      closeReadme();
+    } else {
+      showMessage(error.message, 'error');
+      closeReadme();
+    }
+  }
+}
+
 async function openModels() {
   modelsModalEl.classList.remove('hidden');
   await Promise.all([refreshModels(), refreshModelScanStatus()]);
@@ -835,7 +861,7 @@ function renderModels(models) {
     : `${sorted.length} of ${total} models`;
   modelsEl.innerHTML = sorted.map((model) => `
     <tr>
-      <td class="cell-name">${truncateText(model.name, model.path || model.name)}</td>
+      <td class="cell-name"><button class="link truncate model-name-link" data-action="open-readme" data-id="${model.id}" type="button" title="${escapeHtml(model.path || model.name)}">${escapeHtml(model.name)}</button></td>
       <td><span class="status queued">${escapeHtml(model.domain)}</span></td>
       <td>${truncateText(model.format)}</td>
       <td>${model.architecture ? truncateText(model.architecture) : modelMeta(model.architecture)}</td>
@@ -1147,6 +1173,20 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
+  if (action === 'open-readme') {
+    try {
+      await openReadme(id);
+    } catch (error) {
+      showMessage(error.message, 'error');
+    }
+    return;
+  }
+
+  if (action === 'close-readme') {
+    closeReadme();
+    return;
+  }
+
   if (action === 'open-settings') {
     try {
       await openSettings();
@@ -1279,6 +1319,10 @@ document.addEventListener('click', async (event) => {
 
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
+  if (!readmeModalEl.classList.contains('hidden')) {
+    closeReadme();
+    return;
+  }
   if (!modelExportModalEl.classList.contains('hidden')) {
     closeModelExport();
     return;
