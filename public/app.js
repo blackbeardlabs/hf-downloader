@@ -743,7 +743,7 @@ async function openReadme(modelId) {
     readmeBodyEl.innerHTML = '<div class="loading">Loading…</div>';
     readmeModalEl.classList.remove('hidden');
     const { content } = await api(`/api/models/${modelId}/readme`);
-    readmeBodyEl.innerHTML = marked.parse(content);
+    readmeBodyEl.innerHTML = DOMPurify.sanitize(marked.parse(content));
   } catch (error) {
     if (error.message.includes('No README.md')) {
       showToast('No README.md found for this model', 'info');

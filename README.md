@@ -20,7 +20,7 @@ The app runs locally on Linux, macOS, and Windows. There is no account system, c
 
 ## Requirements
 
-- Node.js 18 or newer
+- Node.js 20 or newer
 - npm
 - `aria2c`
 

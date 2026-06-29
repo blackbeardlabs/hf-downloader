@@ -5,12 +5,19 @@ All notable changes to HF Downloader will be tracked here.
 ## Unreleased
 
 
+## 1.3.1 - 2026-06-29
+
+### Changed
+
+- Minimum Node.js version is now 20 (required by marked@18).
+- README content is rendered as sanitized markdown (headings, code blocks, tables, lists, images, etc.).
+- DOMPurify is used to sanitize HTML output and prevent XSS from untrusted README content.
+
 ## 1.3.0 - 2026-06-29
 
 ### Added
 
 - Clicking a model name in the Models modal opens a README viewer for the model's `README.md` if available.
-- README content is rendered as markdown (headings, code blocks, tables, lists, images, etc.).
 - Shows a toast notification when a model has no `README.md`.
 - Filtered `imatrix` files from model index scans, matching the existing `mmproj` filter.
 

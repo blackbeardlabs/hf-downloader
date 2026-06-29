@@ -1,6 +1,6 @@
 {
   "name": "hf-downloader",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Local Hugging Face and URL download manager using aria2c",
   "author": "blackbeardlabs",
   "license": "MIT",
@@ -21,6 +21,7 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.2.0",
     "better-sqlite3": "^12.11.1",
+    "dompurify": "^3.4.11",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "marked": "^18.0.5"
@@ -46,7 +47,8 @@
       "electron/**/*",
       "public/**/*",
       "node_modules/@fortawesome/fontawesome-free/**/*",
-    "node_modules/marked/lib/**/*",
+      "node_modules/marked/lib/**/*",
+    "node_modules/dompurify/dist/**/*",
       "package.json"
     ],
     "extraResources": [
@@ -99,6 +101,6 @@
     }
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   }
 }

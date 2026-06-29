@@ -197,6 +197,7 @@ function createApp(queue, options = {}) {
   app.use(express.json({ limit: '1mb' }));
   app.use('/vendor/fontawesome', express.static(path.join(__dirname, 'node_modules', '@fortawesome', 'fontawesome-free')));
   app.use('/vendor/marked', express.static(path.join(__dirname, 'node_modules', 'marked', 'lib')));
+  app.use('/vendor/dompurify', express.static(path.join(__dirname, 'node_modules', 'dompurify', 'dist')));
   app.use(express.static(path.join(__dirname, 'public')));
 
   app.get('/api/health', (req, res) => {
