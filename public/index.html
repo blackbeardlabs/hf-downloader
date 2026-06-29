@@ -57,7 +57,7 @@
             </select>
           </label>
           <label>Revision <input name="revision" value="main"></label>
-          <label>Target dir <input name="targetDir" placeholder="/home/user/Downloads/my-model" required></label>
+          <label>Target dir <input name="targetDir" placeholder="Set HF download root in Settings" readonly></label>
           <label>Include <input name="include" placeholder="*.safetensors, *.json"></label>
           <label>Exclude <input name="exclude" placeholder="README.md"></label>
           <div class="button-row">
@@ -159,6 +159,8 @@
 
           <fieldset>
             <legend>Model Indexer</legend>
+            <label>HF download root <input name="hfDownloadRoot" placeholder="/home/you/Models"></label>
+            <small class="field-note">Hugging Face repos download into this root using owner/repo folders, for example Models/unsloth/MiniMax-M3-GGUF.</small>
             <label>Model roots <textarea name="modelRoots" rows="4" placeholder="/home/you/Models"></textarea></label>
             <small class="field-note">One local directory per line. These folders are scanned for GGUF, SafeTensors, and Diffusers models.</small>
           </fieldset>

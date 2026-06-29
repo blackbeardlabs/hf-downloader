@@ -28,7 +28,9 @@ const {
   saveHFToken,
   clearHFToken,
   getModelRoots,
-  saveModelRoots
+  saveModelRoots,
+  getHFDownloadRoot,
+  saveHFDownloadRoot
 } = require('./settings');
 const { scanModelRoots, getScanStatus } = require('./modelIndexer');
 
@@ -150,6 +152,28 @@ function publicJob(job, speedBps = 0, files = null) {
   };
 }
 
+function hfTargetDirFromRoot(repoId) {
+  const root = assertSafeTargetDir(getHFDownloadRoot());
+  const repoPath = safeRelativePath(repoId);
+  const repoParts = repoPath.split('/');
+  if (repoParts.length !== 2 || repoParts.some((part) => !part || part === '.' || part === '..')) {
+    throw new Error('repoId must look like owner/repo-name');
+  }
+  const targetDir = path.resolve(root, ...repoParts);
+  const rootWithSep = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
+  if (targetDir !== root && !targetDir.startsWith(rootWithSep)) {
+    throw new Error('HF target path escapes HF download root');
+  }
+  return targetDir;
+}
+
+function hfTargetDirFromBody(body) {
+  const root = getHFDownloadRoot();
+  if (root) return hfTargetDirFromRoot(body.repoId);
+  if (body.targetDir) return assertSafeTargetDir(body.targetDir);
+  throw new Error('Set HF download root in Settings before importing Hugging Face repos');
+}
+
 function publicFile(file, queue) {
   const speedBps = queue.speedForFile(file.id);
   const { size, downloaded } = effectiveFileNumbers(file);
@@ -214,6 +238,14 @@ function createApp(queue, options = {}) {
 
   app.put('/api/settings/model-roots', (req, res) => {
     res.json({ roots: saveModelRoots(req.body?.roots || []) });
+  });
+
+  app.get('/api/settings/hf-download-root', (req, res) => {
+    res.json({ root: getHFDownloadRoot() });
+  });
+
+  app.put('/api/settings/hf-download-root', (req, res) => {
+    res.json({ root: saveHFDownloadRoot(req.body?.root || '') });
   });
 
   app.get('/api/models', (req, res) => {
@@ -328,7 +360,7 @@ function createApp(queue, options = {}) {
   const body = req.body || {};
   const repoType = body.repoType || 'model';
   const revision = body.revision || 'main';
-  const targetDir = assertSafeTargetDir(body.targetDir);
+  const targetDir = hfTargetDirFromBody(body);
   fs.mkdirSync(targetDir, { recursive: true });
   const selectedPaths = Array.isArray(body.selectedFiles)
     ? new Set(body.selectedFiles.map((item) => safeRelativePath(item)))

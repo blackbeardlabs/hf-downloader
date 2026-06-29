@@ -1,8 +1,10 @@
+const path = require('path');
 const { getSetting, setSetting, deleteSetting } = require('./db');
 
 const SETTINGS_KEY = 'downloadPolicy';
 const HF_TOKEN_KEY = 'hfToken';
 const MODEL_ROOTS_KEY = 'modelRoots';
+const HF_DOWNLOAD_ROOT_KEY = 'hfDownloadRoot';
 
 const defaultDownloadPolicy = {
   autoRestartEnabled: false,
@@ -150,6 +152,26 @@ function saveModelRoots(roots) {
   return clean;
 }
 
+function normalizeDownloadRoot(value) {
+  const root = String(value || '').trim();
+  if (!root) return '';
+  if (root.includes('\0')) throw new Error('HF download root contains invalid characters');
+  const resolved = path.resolve(root);
+  if (!path.isAbsolute(resolved)) throw new Error('HF download root must be an absolute path');
+  return resolved;
+}
+
+function getHFDownloadRoot() {
+  const stored = getSetting(HF_DOWNLOAD_ROOT_KEY);
+  return normalizeDownloadRoot(stored?.root || '');
+}
+
+function saveHFDownloadRoot(root) {
+  const clean = normalizeDownloadRoot(root);
+  setSetting(HF_DOWNLOAD_ROOT_KEY, { root: clean });
+  return clean;
+}
+
 module.exports = {
   defaultDownloadPolicy,
   parseSpeed,
@@ -161,5 +183,7 @@ module.exports = {
   saveHFToken,
   clearHFToken,
   getModelRoots,
-  saveModelRoots
+  saveModelRoots,
+  getHFDownloadRoot,
+  saveHFDownloadRoot
 };

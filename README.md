@@ -127,13 +127,22 @@ For source-code development, `HF_TOKEN` in `.env` is still supported as a fallba
 
 ## Hugging Face Repo Download
 
+Set `HF download root` in Settings before importing Hugging Face repos. Repos are downloaded under `owner/repo-name` folders inside that root.
+
+Example:
+
+```txt
+HF download root: /home/you/Models
+repoId: unsloth/MiniMax-M3-GGUF
+download target: /home/you/Models/unsloth/MiniMax-M3-GGUF
+```
+
 Example model:
 
 ```txt
 repoId: owner/model-name
 repoType: model
 revision: main
-targetDir: /home/you/Downloads/my-model
 include: *.safetensors, *.json
 exclude:
 ```
@@ -144,7 +153,6 @@ Example dataset:
 repoId: owner/dataset-name
 repoType: dataset
 revision: main
-targetDir: /home/you/Downloads/my-dataset
 include: *.parquet, *.json
 exclude:
 ```
@@ -222,6 +230,8 @@ GET    /api/settings/download-policy
 PUT    /api/settings/download-policy
 GET    /api/settings/model-roots
 PUT    /api/settings/model-roots
+GET    /api/settings/hf-download-root
+PUT    /api/settings/hf-download-root
 GET    /api/models
 GET    /api/models/:id
 POST   /api/models/scan

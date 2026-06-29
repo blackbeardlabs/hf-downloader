@@ -43,6 +43,7 @@ let currentModels = [];
 let currentModelTotal = 0;
 let modelSort = { key: 'name', direction: 'asc' };
 let currentExportModels = [];
+let hfDownloadRoot = '';
 const recentToasts = new Map();
 
 function persistForm(form, key) {
@@ -141,6 +142,12 @@ async function refreshTokenStatus() {
   const status = await api('/api/settings/hf-token');
   renderTokenStatus(status);
   return status;
+}
+
+async function refreshHFDownloadRoot() {
+  const data = await api('/api/settings/hf-download-root');
+  fillHFDownloadRoot(data.root);
+  return data;
 }
 
 async function api(path, options = {}) {
@@ -296,6 +303,29 @@ function exportFileName(format = 'aligned') {
   const stamp = new Date().toISOString().slice(0, 10);
   const extension = format === 'csv' ? 'csv' : 'txt';
   return `hf-downloader-models-${stamp}.${extension}`;
+}
+
+function pathSeparatorFor(root) {
+  return String(root || '').includes('\\') ? '\\' : '/';
+}
+
+function joinDisplayPath(root, relativePath) {
+  const cleanRoot = String(root || '').trim().replace(/[\\/]+$/, '');
+  const cleanRel = String(relativePath || '').trim().replace(/^[\\/]+/, '').replace(/[\\/]+/g, pathSeparatorFor(cleanRoot));
+  if (!cleanRoot || !cleanRel) return '';
+  return `${cleanRoot}${pathSeparatorFor(cleanRoot)}${cleanRel}`;
+}
+
+function repoTargetRelativePath(repoId) {
+  const clean = String(repoId || '').trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+  if (!clean || !clean.includes('/') || clean.includes('..')) return '';
+  return clean.split('/').filter(Boolean).slice(0, 2).join('/');
+}
+
+function updateHfTargetDir() {
+  const target = hfForm.elements.targetDir;
+  if (!target) return;
+  target.value = joinDisplayPath(hfDownloadRoot, repoTargetRelativePath(hfForm.elements.repoId?.value));
 }
 
 function isActionEnabled(job, action) {
@@ -628,11 +658,21 @@ function fillModelRoots(roots) {
   settingsForm.modelRoots.value = (roots || []).join('\n');
 }
 
+function fillHFDownloadRoot(root) {
+  hfDownloadRoot = String(root || '');
+  settingsForm.hfDownloadRoot.value = hfDownloadRoot;
+  updateHfTargetDir();
+}
+
 function modelRootsFromSettingsForm() {
   return String(settingsForm.modelRoots.value || '')
     .split(/\r?\n/)
     .map((root) => root.trim())
     .filter(Boolean);
+}
+
+function hfDownloadRootFromSettingsForm() {
+  return String(settingsForm.hfDownloadRoot.value || '').trim();
 }
 
 function policyFromSettingsForm() {
@@ -664,13 +704,15 @@ function policyFromSettingsForm() {
 }
 
 async function openSettings() {
-  const [policyData, rootsData] = await Promise.all([
+  const [policyData, rootsData, downloadRootData] = await Promise.all([
     api('/api/settings/download-policy'),
-    api('/api/settings/model-roots')
+    api('/api/settings/model-roots'),
+    api('/api/settings/hf-download-root')
   ]);
   settingsDefaults = policyData.defaults;
   fillSettingsForm(policyData.policy);
   fillModelRoots(rootsData.roots);
+  fillHFDownloadRoot(downloadRootData.root);
   settingsModalEl.classList.remove('hidden');
 }
 
@@ -953,7 +995,11 @@ persistForm(hfForm, 'hfFormDraft');
 persistForm(document.querySelector('#url-form'), 'urlFormDraft');
 document.querySelectorAll('table.jobs-table, table.files-table, table.models-table').forEach(initResizableTable);
 initResizableModals();
-hfForm.addEventListener('input', clearHfPreview);
+updateHfTargetDir();
+hfForm.addEventListener('input', () => {
+  updateHfTargetDir();
+  clearHfPreview();
+});
 
 hfForm.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -967,7 +1013,7 @@ hfForm.addEventListener('submit', async (event) => {
 settingsForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   try {
-    const [data] = await Promise.all([
+    const [data, rootsData, downloadRootData] = await Promise.all([
       api('/api/settings/download-policy', {
         method: 'PUT',
         body: JSON.stringify(policyFromSettingsForm())
@@ -975,9 +1021,15 @@ settingsForm.addEventListener('submit', async (event) => {
       api('/api/settings/model-roots', {
         method: 'PUT',
         body: JSON.stringify({ roots: modelRootsFromSettingsForm() })
+      }),
+      api('/api/settings/hf-download-root', {
+        method: 'PUT',
+        body: JSON.stringify({ root: hfDownloadRootFromSettingsForm() })
       })
     ]);
     fillSettingsForm(data.policy);
+    fillModelRoots(rootsData.roots);
+    fillHFDownloadRoot(downloadRootData.root);
     showMessage('Settings saved', 'ok');
     closeSettings();
   } catch (error) {
@@ -1257,6 +1309,7 @@ refreshTokenStatus()
     if (!status.hasToken) tokenForm.token.focus();
   })
   .catch(() => {});
+refreshHFDownloadRoot().catch(() => {});
 refresh();
 setInterval(refresh, 2000);
 setInterval(() => {
