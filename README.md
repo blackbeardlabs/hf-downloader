@@ -127,12 +127,12 @@ For source-code development, `HF_TOKEN` in `.env` is still supported as a fallba
 
 ## Hugging Face Repo Download
 
-Set `HF download root` in Settings before importing Hugging Face repos. Repos are downloaded under `owner/repo-name` folders inside that root.
+Set `Models root` in Settings before importing Hugging Face repos. The first folder in that list is also used as the Hugging Face download root. Repos are downloaded under `owner/repo-name` folders inside that root.
 
 Example:
 
 ```txt
-HF download root: /home/you/Models
+Models root: /home/you/Models
 repoId: unsloth/MiniMax-M3-GGUF
 download target: /home/you/Models/unsloth/MiniMax-M3-GGUF
 ```
@@ -209,7 +209,7 @@ Use the `Models` button to open the local model index. Configure model roots in 
 /home/you/Models
 ```
 
-Click `Scan now` in the Models modal to recursively scan those roots. The scan status and progress bar show discovery and indexing progress while large model folders are being processed. The indexer detects:
+The first folder is used as the default Hugging Face download root, and all listed folders are scanned by the Model Indexer. Click `Scan now` in the Models modal to recursively scan those roots. The scan status and progress bar show discovery and indexing progress while large model folders are being processed. The indexer detects:
 
 - `.gguf` files
 - `.safetensors` files
@@ -230,8 +230,6 @@ GET    /api/settings/download-policy
 PUT    /api/settings/download-policy
 GET    /api/settings/model-roots
 PUT    /api/settings/model-roots
-GET    /api/settings/hf-download-root
-PUT    /api/settings/hf-download-root
 GET    /api/models
 GET    /api/models/:id
 POST   /api/models/scan

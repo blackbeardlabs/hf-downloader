@@ -43,7 +43,7 @@ let currentModels = [];
 let currentModelTotal = 0;
 let modelSort = { key: 'name', direction: 'asc' };
 let currentExportModels = [];
-let hfDownloadRoot = '';
+let primaryModelsRoot = '';
 const recentToasts = new Map();
 
 function persistForm(form, key) {
@@ -144,9 +144,9 @@ async function refreshTokenStatus() {
   return status;
 }
 
-async function refreshHFDownloadRoot() {
-  const data = await api('/api/settings/hf-download-root');
-  fillHFDownloadRoot(data.root);
+async function refreshModelRoots() {
+  const data = await api('/api/settings/model-roots');
+  fillModelRoots(data.roots);
   return data;
 }
 
@@ -325,7 +325,7 @@ function repoTargetRelativePath(repoId) {
 function updateHfTargetDir() {
   const target = hfForm.elements.targetDir;
   if (!target) return;
-  target.value = joinDisplayPath(hfDownloadRoot, repoTargetRelativePath(hfForm.elements.repoId?.value));
+  target.value = joinDisplayPath(primaryModelsRoot, repoTargetRelativePath(hfForm.elements.repoId?.value));
 }
 
 function isActionEnabled(job, action) {
@@ -655,12 +655,9 @@ function fillSettingsForm(policy) {
 }
 
 function fillModelRoots(roots) {
-  settingsForm.modelRoots.value = (roots || []).join('\n');
-}
-
-function fillHFDownloadRoot(root) {
-  hfDownloadRoot = String(root || '');
-  settingsForm.hfDownloadRoot.value = hfDownloadRoot;
+  const cleanRoots = roots || [];
+  settingsForm.modelRoots.value = cleanRoots.join('\n');
+  primaryModelsRoot = String(cleanRoots[0] || '');
   updateHfTargetDir();
 }
 
@@ -669,10 +666,6 @@ function modelRootsFromSettingsForm() {
     .split(/\r?\n/)
     .map((root) => root.trim())
     .filter(Boolean);
-}
-
-function hfDownloadRootFromSettingsForm() {
-  return String(settingsForm.hfDownloadRoot.value || '').trim();
 }
 
 function policyFromSettingsForm() {
@@ -704,15 +697,13 @@ function policyFromSettingsForm() {
 }
 
 async function openSettings() {
-  const [policyData, rootsData, downloadRootData] = await Promise.all([
+  const [policyData, rootsData] = await Promise.all([
     api('/api/settings/download-policy'),
-    api('/api/settings/model-roots'),
-    api('/api/settings/hf-download-root')
+    api('/api/settings/model-roots')
   ]);
   settingsDefaults = policyData.defaults;
   fillSettingsForm(policyData.policy);
   fillModelRoots(rootsData.roots);
-  fillHFDownloadRoot(downloadRootData.root);
   settingsModalEl.classList.remove('hidden');
 }
 
@@ -1013,7 +1004,7 @@ hfForm.addEventListener('submit', async (event) => {
 settingsForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   try {
-    const [data, rootsData, downloadRootData] = await Promise.all([
+    const [data, rootsData] = await Promise.all([
       api('/api/settings/download-policy', {
         method: 'PUT',
         body: JSON.stringify(policyFromSettingsForm())
@@ -1021,15 +1012,10 @@ settingsForm.addEventListener('submit', async (event) => {
       api('/api/settings/model-roots', {
         method: 'PUT',
         body: JSON.stringify({ roots: modelRootsFromSettingsForm() })
-      }),
-      api('/api/settings/hf-download-root', {
-        method: 'PUT',
-        body: JSON.stringify({ root: hfDownloadRootFromSettingsForm() })
       })
     ]);
     fillSettingsForm(data.policy);
     fillModelRoots(rootsData.roots);
-    fillHFDownloadRoot(downloadRootData.root);
     showMessage('Settings saved', 'ok');
     closeSettings();
   } catch (error) {
@@ -1309,7 +1295,7 @@ refreshTokenStatus()
     if (!status.hasToken) tokenForm.token.focus();
   })
   .catch(() => {});
-refreshHFDownloadRoot().catch(() => {});
+refreshModelRoots().catch(() => {});
 refresh();
 setInterval(refresh, 2000);
 setInterval(() => {

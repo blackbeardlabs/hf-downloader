@@ -10,12 +10,13 @@ All notable changes to HF Downloader will be tracked here.
 
 ### Added
 
-- Added a global Hugging Face download root setting.
-- Hugging Face repo imports now derive their target folder from the download root and repo ID, such as `Models/owner/repo-name`.
+- Added a shared Models root setting for Hugging Face imports and Model Indexer scanning.
+- Hugging Face repo imports now derive their target folder from the first Models root and repo ID, such as `Models/owner/repo-name`.
 
 ### Changed
 
 - Hugging Face repo target directory is now shown as a read-only computed path in the import form.
+- Removed the separate Hugging Face download root setting; the first Models root is used instead.
 - General File Downloader target paths remain manually selected per job.
 
 ## 1.1.3 - 2026-06-28

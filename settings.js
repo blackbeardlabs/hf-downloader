@@ -4,7 +4,7 @@ const { getSetting, setSetting, deleteSetting } = require('./db');
 const SETTINGS_KEY = 'downloadPolicy';
 const HF_TOKEN_KEY = 'hfToken';
 const MODEL_ROOTS_KEY = 'modelRoots';
-const HF_DOWNLOAD_ROOT_KEY = 'hfDownloadRoot';
+const LEGACY_HF_DOWNLOAD_ROOT_KEY = 'hfDownloadRoot';
 
 const defaultDownloadPolicy = {
   autoRestartEnabled: false,
@@ -133,43 +133,35 @@ function normalizeModelRoots(value) {
   const seen = new Set();
   for (const item of input) {
     const root = String(item || '').trim();
-    if (!root || seen.has(root)) continue;
     if (root.includes('\0')) throw new Error('Model root contains invalid characters');
-    seen.add(root);
-    roots.push(root);
+    if (!root) continue;
+    if (!path.isAbsolute(root)) throw new Error('Model root must be an absolute path');
+    const resolved = path.resolve(root);
+    if (seen.has(resolved)) continue;
+    seen.add(resolved);
+    roots.push(resolved);
   }
   return roots;
 }
 
 function getModelRoots() {
   const stored = getSetting(MODEL_ROOTS_KEY);
-  return normalizeModelRoots(stored?.roots || []);
+  const roots = normalizeModelRoots(stored?.roots || []);
+  if (roots.length) return roots;
+
+  const legacy = getSetting(LEGACY_HF_DOWNLOAD_ROOT_KEY);
+  return normalizeModelRoots(legacy?.root ? [legacy.root] : []);
 }
 
 function saveModelRoots(roots) {
   const clean = normalizeModelRoots(roots);
   setSetting(MODEL_ROOTS_KEY, { roots: clean });
+  deleteSetting(LEGACY_HF_DOWNLOAD_ROOT_KEY);
   return clean;
 }
 
-function normalizeDownloadRoot(value) {
-  const root = String(value || '').trim();
-  if (!root) return '';
-  if (root.includes('\0')) throw new Error('HF download root contains invalid characters');
-  const resolved = path.resolve(root);
-  if (!path.isAbsolute(resolved)) throw new Error('HF download root must be an absolute path');
-  return resolved;
-}
-
-function getHFDownloadRoot() {
-  const stored = getSetting(HF_DOWNLOAD_ROOT_KEY);
-  return normalizeDownloadRoot(stored?.root || '');
-}
-
-function saveHFDownloadRoot(root) {
-  const clean = normalizeDownloadRoot(root);
-  setSetting(HF_DOWNLOAD_ROOT_KEY, { root: clean });
-  return clean;
+function getPrimaryModelRoot() {
+  return getModelRoots()[0] || '';
 }
 
 module.exports = {
@@ -184,6 +176,5 @@ module.exports = {
   clearHFToken,
   getModelRoots,
   saveModelRoots,
-  getHFDownloadRoot,
-  saveHFDownloadRoot
+  getPrimaryModelRoot
 };

@@ -29,8 +29,7 @@ const {
   clearHFToken,
   getModelRoots,
   saveModelRoots,
-  getHFDownloadRoot,
-  saveHFDownloadRoot
+  getPrimaryModelRoot
 } = require('./settings');
 const { scanModelRoots, getScanStatus } = require('./modelIndexer');
 
@@ -153,7 +152,7 @@ function publicJob(job, speedBps = 0, files = null) {
 }
 
 function hfTargetDirFromRoot(repoId) {
-  const root = assertSafeTargetDir(getHFDownloadRoot());
+  const root = assertSafeTargetDir(getPrimaryModelRoot());
   const repoPath = safeRelativePath(repoId);
   const repoParts = repoPath.split('/');
   if (repoParts.length !== 2 || repoParts.some((part) => !part || part === '.' || part === '..')) {
@@ -162,16 +161,16 @@ function hfTargetDirFromRoot(repoId) {
   const targetDir = path.resolve(root, ...repoParts);
   const rootWithSep = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
   if (targetDir !== root && !targetDir.startsWith(rootWithSep)) {
-    throw new Error('HF target path escapes HF download root');
+    throw new Error('HF target path escapes Models root');
   }
   return targetDir;
 }
 
 function hfTargetDirFromBody(body) {
-  const root = getHFDownloadRoot();
+  const root = getPrimaryModelRoot();
   if (root) return hfTargetDirFromRoot(body.repoId);
   if (body.targetDir) return assertSafeTargetDir(body.targetDir);
-  throw new Error('Set HF download root in Settings before importing Hugging Face repos');
+  throw new Error('Set Models root in Settings before importing Hugging Face repos');
 }
 
 function publicFile(file, queue) {
@@ -238,14 +237,6 @@ function createApp(queue, options = {}) {
 
   app.put('/api/settings/model-roots', (req, res) => {
     res.json({ roots: saveModelRoots(req.body?.roots || []) });
-  });
-
-  app.get('/api/settings/hf-download-root', (req, res) => {
-    res.json({ root: getHFDownloadRoot() });
-  });
-
-  app.put('/api/settings/hf-download-root', (req, res) => {
-    res.json({ root: saveHFDownloadRoot(req.body?.root || '') });
   });
 
   app.get('/api/models', (req, res) => {
