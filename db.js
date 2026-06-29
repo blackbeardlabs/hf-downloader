@@ -260,7 +260,9 @@ function listModels(filters = {}) {
     const needle = `%${filters.search}%`;
     values.push(needle, needle, needle, needle, needle);
   }
-  if (!filters.includeIgnored) {
+  if (filters.onlyIgnored) {
+    clauses.push('ignored = 1');
+  } else if (!filters.includeIgnored) {
     clauses.push('ignored = 0');
   }
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';

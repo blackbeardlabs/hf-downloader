@@ -246,7 +246,7 @@ function createApp(queue, options = {}) {
       search: req.query.search ? String(req.query.search) : '',
       domain: req.query.domain ? String(req.query.domain) : '',
       format: req.query.format ? String(req.query.format) : '',
-      includeIgnored: req.query.includeIgnored === 'true'
+      onlyIgnored: req.query.onlyIgnored === 'true'
     };
     const models = listModels(filters);
     const total = listModels({}).length;

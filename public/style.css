@@ -751,7 +751,7 @@ th {
   border-bottom: 1px solid #e7eaee;
   display: grid;
   gap: 8px;
-  grid-template-columns: minmax(220px, 1fr) 150px 150px auto auto auto;
+  grid-template-columns: minmax(220px, 1fr) 150px 150px auto auto;
   padding: 12px 16px;
 }
 
@@ -765,6 +765,18 @@ th {
   font-size: 13px;
   padding: 10px 16px;
   overflow-wrap: anywhere;
+}
+
+.model-scan-row {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 16px 6px;
+}
+
+.model-scan-row .check-row {
+  flex-shrink: 0;
+  margin: -6px 0 2px 16px;
 }
 
 .model-progress {

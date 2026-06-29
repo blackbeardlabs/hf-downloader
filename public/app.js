@@ -888,7 +888,7 @@ async function refreshModels() {
   if (modelSearchEl.value.trim()) params.set('search', modelSearchEl.value.trim());
   if (modelDomainEl.value) params.set('domain', modelDomainEl.value);
   if (modelFormatEl.value) params.set('format', modelFormatEl.value);
-  if (modelShowIgnoredEl.checked) params.set('includeIgnored', 'true');
+  if (modelShowIgnoredEl.checked) params.set('onlyIgnored', 'true');
   const suffix = params.toString() ? `?${params}` : '';
   const { models, total } = await api(`/api/models${suffix}`);
   currentModels = models;
