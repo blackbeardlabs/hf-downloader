@@ -301,12 +301,12 @@ function createApp(queue, options = {}) {
     const rootDir = model.root_dir;
     let searchDir = containerDir;
     if (rootDir) {
-      const rootParts = rootDir.split(path.sep).filter(Boolean).length;
-      const containerParts = containerDir.split(path.sep).filter(Boolean);
-      if (containerParts.length > rootParts + 2) {
-        searchDir = path.join(...containerParts.slice(0, rootParts + 2));
-      } else if (containerParts.length === rootParts + 2) {
-        searchDir = path.join(...containerParts);
+      const relPath = path.relative(rootDir, containerDir);
+      const relParts = relPath.split(path.sep);
+      if (relParts.length >= 2) {
+        searchDir = path.join(rootDir, relParts[0], relParts[1]);
+      } else {
+        searchDir = path.join(rootDir, relParts[0]);
       }
     }
 
