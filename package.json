@@ -1,6 +1,6 @@
 {
   "name": "hf-downloader",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "description": "Local Hugging Face and URL download manager using aria2c",
   "author": "blackbeardlabs",
   "license": "MIT",

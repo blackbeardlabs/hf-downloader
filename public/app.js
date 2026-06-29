@@ -866,13 +866,25 @@ function renderModels(models) {
 
   const sorted = sortedModels(models);
   const total = Number(currentModelTotal || sorted.length);
-  modelCountEl.textContent = total === sorted.length
-    ? `${total} model${total === 1 ? '' : 's'}`
-    : `${sorted.length} of ${total} models`;
-  modelsEl.innerHTML = sorted.map((model) => `
-    <tr class="${model.ignored ? 'ignored-model' : ''}">
-      <td class="cell-name"><button class="link truncate model-name-link" data-action="open-readme" data-id="${model.id}" type="button" title="${escapeHtml(model.path || model.name)}">${escapeHtml(model.name)}</button></td>
-      <td><span class="status ${model.ignored ? 'cancelled' : 'queued'}">${escapeHtml(model.domain)}</span></td>
+  const isIgnoredView = modelShowIgnoredEl.checked;
+  modelCountEl.textContent = isIgnoredView
+    ? ''
+    : (total === sorted.length
+      ? `${total} model${total === 1 ? '' : 's'}`
+      : `${sorted.length} of ${total} models`);
+  modelsEl.innerHTML = sorted.map((model) => {
+    const ignored = model.ignored || false;
+    const nameHtml = ignored
+      ? `<span class="truncate" title="${escapeHtml(model.path || model.name)}">${escapeHtml(model.name)}</span>`
+      : `<button class="link truncate model-name-link" data-action="open-readme" data-id="${model.id}" type="button" title="${escapeHtml(model.path || model.name)}">${escapeHtml(model.name)}</button>`;
+    const toggleIcon = ignored
+      ? '<i class="fa-solid fa-xmark" title="Ignored"></i>'
+      : '<i class="fa-solid fa-check" title="Included"></i>';
+    const toggleAction = ignored ? 'unignore-model' : 'ignore-model';
+    return `
+    <tr class="${ignored ? 'ignored-model' : ''}">
+      <td class="cell-name"><span class="model-name-wrap">${nameHtml}<button class="model-ignore-btn" data-action="${toggleAction}" data-id="${model.id}" type="button">${toggleIcon}</button></span></td>
+      <td><span class="status ${ignored ? 'cancelled' : 'queued'}">${escapeHtml(model.domain)}</span></td>
       <td>${truncateText(model.format)}</td>
       <td>${model.architecture ? truncateText(model.architecture) : modelMeta(model.architecture)}</td>
       <td>${model.creator ? truncateText(model.creator) : modelMeta(model.creator)}</td>
@@ -880,7 +892,7 @@ function renderModels(models) {
       <td>${model.precision ? truncateText(model.precision) : modelMeta(model.precision)}</td>
       <td class="cell-bytes">${bytes(model.size_bytes)}</td>
     </tr>
-  `).join('');
+  `}).join('');
 }
 
 async function refreshModels() {
@@ -1199,6 +1211,19 @@ document.addEventListener('click', async (event) => {
 
   if (action === 'close-readme') {
     closeReadme();
+    return;
+  }
+
+  if (action === 'ignore-model' || action === 'unignore-model') {
+    const actionLabel = action === 'ignore-model' ? 'ignore' : 'unignore';
+    if (!confirm(`Are you sure you want to ${actionLabel} this model?`)) return;
+    try {
+      await api(`/api/models/${id}/toggle-ignored`, { method: 'PUT' });
+      showMessage(`Model ${actionLabel}d`, 'ok');
+      await refreshModels();
+    } catch (error) {
+      showMessage(error.message, 'error');
+    }
     return;
   }
 

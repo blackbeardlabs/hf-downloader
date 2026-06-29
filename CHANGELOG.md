@@ -4,6 +4,20 @@ All notable changes to HF Downloader will be tracked here.
 
 ## Unreleased
 
+
+## 1.3.4 - 2026-06-29
+
+### Added
+
+- Added ignore/unignore toggle icons for each model row — click to mark a model as ignored or restore it.
+- Confirmation dialog before toggling a model's ignore status.
+- README search now starts from the model's top-level folder (e.g., `glm5.2/`) instead of the file's parent directory.
+
+### Changed
+
+- Ignored models have non-clickable names and do not open the README viewer.
+- Model count header is hidden when the "Show ignored files" filter is active.
+
 ## 1.3.3 - 2026-06-29
 
 ### Added

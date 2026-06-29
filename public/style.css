@@ -618,6 +618,47 @@ th {
   text-decoration: underline;
 }
 
+.model-name-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.model-name-wrap .truncate,
+.model-name-wrap button.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-ignore-btn {
+  background: transparent;
+  border: 0;
+  color: #2c7a5b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: 11px;
+  padding: 0 2px;
+  width: auto;
+  height: auto;
+}
+
+.model-ignore-btn:hover {
+  color: #11632d;
+}
+
+.ignored-model .model-ignore-btn {
+  color: #9ca3af;
+}
+
+.ignored-model .model-ignore-btn:hover {
+  color: #b3261e;
+}
+
 .sort-icon {
   color: #22577a;
   display: none;

@@ -281,6 +281,15 @@ function createApp(queue, options = {}) {
     res.json({ model });
   });
 
+  app.put('/api/models/:id/toggle-ignored', (req, res) => {
+    const model = getModel(req.params.id);
+    if (!model) return res.status(404).json({ error: 'model not found' });
+    const ignored = model.ignored ? 0 : 1;
+    const { db } = require('./db');
+    db.prepare('UPDATE model_index SET ignored = ? WHERE id = ?').run(ignored, model.id);
+    res.json({ ignored: Boolean(ignored) });
+  });
+
   app.get('/api/models/:id/readme', (req, res) => {
     const model = getModel(req.params.id);
     if (!model) return res.status(404).json({ error: 'model not found' });
@@ -289,8 +298,20 @@ function createApp(queue, options = {}) {
       ? model.path
       : path.dirname(model.path);
 
+    const rootDir = model.root_dir;
+    let searchDir = containerDir;
+    if (rootDir) {
+      const rootParts = rootDir.split(path.sep).filter(Boolean).length;
+      const containerParts = containerDir.split(path.sep).filter(Boolean);
+      if (containerParts.length > rootParts + 2) {
+        searchDir = path.join(...containerParts.slice(0, rootParts + 2));
+      } else if (containerParts.length === rootParts + 2) {
+        searchDir = path.join(...containerParts);
+      }
+    }
+
     function findReadme(dir, depth = 0) {
-      if (depth > 3) return null;
+      if (depth > 4) return null;
       const candidate = path.join(dir, 'README.md');
       if (fs.existsSync(candidate)) {
         try {
@@ -298,7 +319,7 @@ function createApp(queue, options = {}) {
           if (stat.isFile()) return candidate;
         } catch {}
       }
-      if (depth >= 3) return null;
+      if (depth >= 4) return null;
       let entries = [];
       try {
         entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -313,7 +334,7 @@ function createApp(queue, options = {}) {
       return null;
     }
 
-    const readmePath = findReadme(containerDir);
+    const readmePath = findReadme(searchDir);
     if (!readmePath) return res.status(404).json({ error: 'No README.md found for this model' });
     try {
       const content = fs.readFileSync(readmePath, 'utf8');
