@@ -5,6 +5,13 @@ All notable changes to HF Downloader will be tracked here.
 ## Unreleased
 
 
+## 1.3.2 - 2026-06-29
+
+### Added
+
+- README links show the target URL on hover.
+- Clicking a README link asks for confirmation before opening it in the default browser. The app never navigates to links internally.
+
 ## 1.3.1 - 2026-06-29
 
 ### Changed
@@ -13,6 +20,7 @@ All notable changes to HF Downloader will be tracked here.
 - README content is rendered as sanitized markdown (headings, code blocks, tables, lists, images, etc.).
 - DOMPurify is used to sanitize HTML output and prevent XSS from untrusted README content.
 
+
 ## 1.3.0 - 2026-06-29
 
 ### Added
@@ -20,7 +28,6 @@ All notable changes to HF Downloader will be tracked here.
 - Clicking a model name in the Models modal opens a README viewer for the model's `README.md` if available.
 - Shows a toast notification when a model has no `README.md`.
 - Filtered `imatrix` files from model index scans, matching the existing `mmproj` filter.
-
 
 
 ## 1.2.0 - 2026-06-29

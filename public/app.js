@@ -744,6 +744,15 @@ async function openReadme(modelId) {
     readmeModalEl.classList.remove('hidden');
     const { content } = await api(`/api/models/${modelId}/readme`);
     readmeBodyEl.innerHTML = DOMPurify.sanitize(marked.parse(content));
+    readmeBodyEl.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', (event) => {
+        event.preventDefault();
+        const url = link.href;
+        if (confirm(`Open this link in your browser?\n\n${url}`)) {
+          window.open(url, '_blank');
+        }
+      });
+    });
   } catch (error) {
     if (error.message.includes('No README.md')) {
       showToast('No README.md found for this model', 'info');

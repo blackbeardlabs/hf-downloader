@@ -420,6 +420,8 @@ button:disabled {
 
 .model-readme-body a {
   color: #22577a;
+  cursor: pointer;
+  text-decoration: underline;
 }
 
 .model-readme-body img {
