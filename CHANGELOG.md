@@ -16,6 +16,8 @@ All notable changes to HF Downloader will be tracked here.
 ### Changed
 
 - Hugging Face repo target directory is now shown as a read-only computed path in the import form.
+- Hugging Face repo target directory now shows the Models root when the repo ID is empty and updates as soon as a partial repo ID is typed.
+- The Hugging Face target placeholder is only shown when no Models root is configured.
 - Removed the separate Hugging Face download root setting; the first Models root is used instead.
 - General File Downloader target paths remain manually selected per job.
 

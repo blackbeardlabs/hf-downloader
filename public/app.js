@@ -44,6 +44,7 @@ let currentModelTotal = 0;
 let modelSort = { key: 'name', direction: 'asc' };
 let currentExportModels = [];
 let primaryModelsRoot = '';
+let modelRootsLoaded = false;
 const recentToasts = new Map();
 
 function persistForm(form, key) {
@@ -312,19 +313,23 @@ function pathSeparatorFor(root) {
 function joinDisplayPath(root, relativePath) {
   const cleanRoot = String(root || '').trim().replace(/[\\/]+$/, '');
   const cleanRel = String(relativePath || '').trim().replace(/^[\\/]+/, '').replace(/[\\/]+/g, pathSeparatorFor(cleanRoot));
-  if (!cleanRoot || !cleanRel) return '';
+  if (!cleanRoot) return '';
+  if (!cleanRel) return cleanRoot;
   return `${cleanRoot}${pathSeparatorFor(cleanRoot)}${cleanRel}`;
 }
 
 function repoTargetRelativePath(repoId) {
   const clean = String(repoId || '').trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
-  if (!clean || !clean.includes('/') || clean.includes('..')) return '';
-  return clean.split('/').filter(Boolean).slice(0, 2).join('/');
+  if (!clean) return '';
+  const parts = clean.split('/').filter(Boolean).slice(0, 2);
+  if (parts.some((part) => part === '.' || part === '..')) return '';
+  return parts.join('/');
 }
 
 function updateHfTargetDir() {
   const target = hfForm.elements.targetDir;
   if (!target) return;
+  target.placeholder = modelRootsLoaded && !primaryModelsRoot ? 'Set Models root in Settings' : '';
   target.value = joinDisplayPath(primaryModelsRoot, repoTargetRelativePath(hfForm.elements.repoId?.value));
 }
 
@@ -658,6 +663,7 @@ function fillModelRoots(roots) {
   const cleanRoots = roots || [];
   settingsForm.modelRoots.value = cleanRoots.join('\n');
   primaryModelsRoot = String(cleanRoots[0] || '');
+  modelRootsLoaded = true;
   updateHfTargetDir();
 }
 
