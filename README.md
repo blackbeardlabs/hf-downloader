@@ -189,6 +189,8 @@ Click a job name to open its detail panel. It lists every file in the job with s
 
 The dashboard shows downloaded bytes and current speed. Active progress is read from aria2 progress output, not from filesystem file size, because some filesystems may preallocate or expose sparse files at their final size before all bytes are downloaded.
 
+Set `Maximum download speed` in the dashboard `Settings` modal to cap the active download. Use `0` for unlimited, or enter a value such as `500K`, `10M`, or `1G`. Changing the limit resumes the active partial file immediately with the new cap.
+
 Auto restart can be configured from the dashboard `Settings` modal. It supports:
 
 - low-speed rule
@@ -257,7 +259,7 @@ Run the desktop app during development:
 npm run electron
 ```
 
-Build release artifacts. All commands below can be run from any OS and cross-build for the target platforms, since `better-sqlite3` prebuilt binaries are downloaded per platform:
+Build release artifacts on the target operating system. `better-sqlite3` is native, so release-quality packages should not be cross-built across operating systems:
 
 ```bash
 npm run dist:mac      # macOS .dmg
@@ -272,7 +274,7 @@ Or request all configured targets at once:
 npm run dist:all
 ```
 
-For Linux arm64:
+For Linux ARM64:
 
 ```bash
 npm run dist:linux:arm64
@@ -281,14 +283,17 @@ npm run dist:linux:arm64
 Configured targets:
 
 - Windows: `.exe` installer and portable executable (x64)
-- Linux: `.deb` and `.AppImage` (x64, arm64 via `dist:linux:arm64`)
+- Linux: `.deb` and `.AppImage` (x64, ARM64 via `dist:linux:arm64`)
 - macOS: `.dmg`
+
+A native Ubuntu 24.04 ARM GitHub Actions definition is available as a disabled template at `ci/templates/build-linux-arm64.yml`. Copy it into `.github/workflows/` only when the repository credential has permission to modify workflows. The Debian package is recommended on Ubuntu and Debian systems, including NVIDIA DGX Spark. The AppImage uses a static runtime and does not require FUSE 2; on systems that restrict unprivileged user namespaces, its launcher applies Electron's compatibility fallback automatically.
 
 Packaging notes:
 
+- Packaging with electron-builder requires Node.js 22.12 or newer; running the app from source continues to support Node.js 20 or newer.
 - `aria2c` must either be bundled per platform or detected as a system dependency.
 - Current implementation detects system `aria2c`; bundling platform-specific `aria2c` binaries can be added later for a smoother release.
-- `better-sqlite3` is native. `npm start` rebuilds for Node.js. `npm run electron` and `npm run dist:mac` rebuild for the local Electron runtime; Windows/Linux package builds download prebuilt native binaries for the target architecture via `prebuild-install`.
+- `better-sqlite3` is native. `npm start` rebuilds for Node.js. `npm run electron` and `npm run dist:mac` rebuild for the local Electron runtime. Build release artifacts on their target operating system and architecture; the ARM64 workflow template is configured for native Linux ARM64.
 - macOS `.dmg` signing/notarization requires Apple Developer tooling for a polished public release.
 - Windows signing is optional for testing but useful for reducing security warnings.
 

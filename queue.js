@@ -110,6 +110,15 @@ class DownloadQueue {
     return this.progress.speedBps || 0;
   }
 
+  restartActiveForSpeedLimit() {
+    if (!this.active?.child) return false;
+    const previousReason = this.active.reason;
+    this.active.reason = 'speed_limit_changed';
+    if (this.active.child.kill('SIGTERM')) return true;
+    this.active.reason = previousReason;
+    return false;
+  }
+
   pump() {
     if (this.active) return;
 
@@ -159,8 +168,10 @@ class DownloadQueue {
 
     this.monitor.start(job.id, file.id);
 
+    const policy = this.options.getPolicy();
     const { child, promise } = runAria2(file, {
       ...this.options,
+      maxDownloadSpeed: policy.maxDownloadSpeed,
       onProgress: (progress) => {
         this.progress = {
           jobId: job.id,
@@ -225,6 +236,14 @@ class DownloadQueue {
       if (active && active.reason === 'auto_restart') {
         this.progress = { jobId: null, fileId: null, speedBps: 0, percent: null, updatedAt: 0 };
         updateFile(file.id, { status: 'queued', last_error: active.restartMessage || 'Auto restart' });
+        setImmediate(() => this.pump());
+        return;
+      }
+
+      if (active && active.reason === 'speed_limit_changed') {
+        this.monitor.stop();
+        this.progress = { jobId: null, fileId: null, speedBps: 0, percent: null, updatedAt: 0 };
+        updateFile(file.id, { status: 'queued', last_error: null });
         setImmediate(() => this.pump());
         return;
       }

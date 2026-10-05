@@ -150,6 +150,11 @@
         <div class="settings-grid">
           <label class="check-row"><input type="checkbox" name="autoRestartEnabled"> Enable auto restart</label>
           <fieldset>
+            <legend>Download speed</legend>
+            <label>Maximum download speed <input name="maxDownloadSpeed" inputmode="decimal" placeholder="0"></label>
+            <small class="field-note">Use 0 for unlimited. Examples: 500K, 10M, or 1G. A changed limit is applied immediately by resuming the active file.</small>
+          </fieldset>
+          <fieldset>
             <legend>Hugging Face API Token</legend>
             <div class="settings-token-row">
               <span id="settings-token-status">checking</span>

@@ -46,6 +46,14 @@ git log --oneline -5
 
 If the previous version commit is already on `origin/main`, changes made after that point must be documented under a newer version. This prevents silently changing release history after users may already have pulled or downloaded a release.
 
+## Commit Discipline
+
+- Every completed update must be assigned to an appropriate semantic version and documented in `CHANGELOG.md` before it is committed.
+- Commit every completed update. Do not leave finished project changes uncommitted unless the user explicitly asks for that.
+- Include all files that belong to the update in the same commit, while preserving unrelated user changes.
+- Run relevant tests and `git diff --check` before committing, then confirm the worktree state after the commit.
+- Use a concise commit message that describes the completed update.
+
 ## Packaging Notes
 
 - This app uses native `better-sqlite3`; do not assume cross-built Electron artifacts work across OSes.

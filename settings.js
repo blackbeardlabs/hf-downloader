@@ -7,6 +7,7 @@ const MODEL_ROOTS_KEY = 'modelRoots';
 const LEGACY_HF_DOWNLOAD_ROOT_KEY = 'hfDownloadRoot';
 
 const defaultDownloadPolicy = {
+  maxDownloadSpeed: '0',
   autoRestartEnabled: false,
   behavior: {
     applyRules: 'any'
@@ -38,10 +39,16 @@ function parseSpeed(value) {
   if (!match) throw new Error(`Invalid speed value: ${value}`);
   const n = Number(match[1]);
   const unit = match[2].toUpperCase();
-  if (unit === 'G') return Math.round(n * 1024 * 1024 * 1024);
-  if (unit === 'M') return Math.round(n * 1024 * 1024);
-  if (unit === 'K') return Math.round(n * 1024);
-  return Math.round(n);
+  const multiplier = unit === 'G'
+    ? 1024 * 1024 * 1024
+    : unit === 'M'
+      ? 1024 * 1024
+      : unit === 'K'
+        ? 1024
+        : 1;
+  const bytes = Math.round(n * multiplier);
+  if (!Number.isSafeInteger(bytes)) throw new Error(`Invalid speed value: ${value}`);
+  return bytes;
 }
 
 function intInRange(value, name, min, max = Number.MAX_SAFE_INTEGER) {
@@ -60,6 +67,9 @@ function validateDownloadPolicy(input) {
   const src = input || {};
   const policy = JSON.parse(JSON.stringify(defaultDownloadPolicy));
 
+  const maxDownloadSpeed = String(src.maxDownloadSpeed ?? policy.maxDownloadSpeed).trim() || '0';
+  const maxDownloadSpeedBytes = parseSpeed(maxDownloadSpeed);
+  policy.maxDownloadSpeed = maxDownloadSpeedBytes === 0 ? '0' : maxDownloadSpeed;
   policy.autoRestartEnabled = bool(src.autoRestartEnabled);
   policy.behavior.applyRules = src.behavior?.applyRules === 'all' ? 'all' : 'any';
 
@@ -78,6 +88,15 @@ function validateDownloadPolicy(input) {
   policy.restartLimits.maxRestartsPerFile = intInRange(src.restartLimits?.maxRestartsPerFile ?? policy.restartLimits.maxRestartsPerFile, 'maxRestartsPerFile', 0);
   policy.restartLimits.maxRestartsPerJob = intInRange(src.restartLimits?.maxRestartsPerJob ?? policy.restartLimits.maxRestartsPerJob, 'maxRestartsPerJob', 0);
   policy.restartLimits.cooldownSeconds = intInRange(src.restartLimits?.cooldownSeconds ?? policy.restartLimits.cooldownSeconds, 'cooldownSeconds', 0);
+
+  if (
+    policy.autoRestartEnabled &&
+    policy.rules.lowSpeed.enabled &&
+    maxDownloadSpeedBytes > 0 &&
+    maxDownloadSpeedBytes <= parseSpeed(policy.rules.lowSpeed.speedLimit)
+  ) {
+    throw new Error('Maximum download speed must be higher than the low-speed restart threshold, or the low-speed rule must be disabled');
+  }
 
   return policy;
 }

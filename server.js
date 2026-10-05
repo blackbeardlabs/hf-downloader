@@ -192,6 +192,15 @@ function publicFile(file, queue) {
   };
 }
 
+function saveDownloadPolicyForQueue(queue, input) {
+  const previousPolicy = getDownloadPolicy();
+  const policy = saveDownloadPolicy(input || {});
+  const restartedActiveDownload = previousPolicy.maxDownloadSpeed !== policy.maxDownloadSpeed
+    ? queue.restartActiveForSpeedLimit()
+    : false;
+  return { policy, restartedActiveDownload };
+}
+
 function createApp(queue, options = {}) {
   const app = express();
   app.use(express.json({ limit: '1mb' }));
@@ -230,7 +239,7 @@ function createApp(queue, options = {}) {
   });
 
   app.put('/api/settings/download-policy', (req, res) => {
-    res.json({ policy: saveDownloadPolicy(req.body || {}) });
+    res.json(saveDownloadPolicyForQueue(queue, req.body));
   });
 
   app.get('/api/settings/model-roots', (req, res) => {
@@ -544,5 +553,6 @@ if (require.main === module) {
 module.exports = {
   createApp,
   startServer,
-  ensureAria2
+  ensureAria2,
+  saveDownloadPolicyForQueue
 };

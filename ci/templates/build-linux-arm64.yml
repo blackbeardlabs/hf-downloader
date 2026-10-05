@@ -1,0 +1,93 @@
+# Workflow template: copy this file into .github/workflows/ to enable it.
+name: Build Linux ARM64
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build-linux-arm64:
+    name: Ubuntu 24.04 ARM64
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.12"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install smoke-test display server
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes xvfb
+
+      - name: Build ARM64 packages
+        run: npm run dist:linux:arm64
+
+      - name: Validate package architectures
+        shell: bash
+        run: |
+          set -euo pipefail
+          appimage=$(find dist -maxdepth 1 -type f -name '*linux-arm64.AppImage' -print -quit)
+          deb=$(find dist -maxdepth 1 -type f -name '*_arm64.deb' -print -quit)
+
+          test -n "$appimage"
+          test -n "$deb"
+          file "$appimage" | tee appimage-architecture.txt
+          grep -q 'ARM aarch64' appimage-architecture.txt
+          grep -q 'static-pie linked' appimage-architecture.txt
+          test "$(dpkg-deb --field "$deb" Architecture)" = arm64
+
+          "$appimage" --appimage-extract >/dev/null
+          native_module=squashfs-root/resources/app.asar.unpacked/node_modules/better-sqlite3/build/Release/better_sqlite3.node
+          test -f "$native_module"
+          file "$native_module" | tee native-module-architecture.txt
+          grep -q 'ARM aarch64' native-module-architecture.txt
+
+      - name: Smoke-test Electron startup
+        shell: bash
+        run: |
+          set -euo pipefail
+          appimage=$(find dist -maxdepth 1 -type f -name '*linux-arm64.AppImage' -print -quit)
+          xvfb-run --auto-servernum "$appimage" >electron-output.log 2>&1 &
+          app_pid=$!
+          trap 'kill "$app_pid" 2>/dev/null || true' EXIT
+
+          for attempt in $(seq 1 30); do
+            log_file=$(find "$HOME/.config" -maxdepth 3 -type f -name main.log -print -quit 2>/dev/null || true)
+            if test -n "$log_file" && grep -q 'server listening' "$log_file"; then
+              exit 0
+            fi
+            if ! kill -0 "$app_pid" 2>/dev/null; then
+              cat electron-output.log
+              test -n "$log_file" && cat "$log_file"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          cat electron-output.log
+          test -n "$log_file" && cat "$log_file"
+          exit 1
+
+      - name: Upload Linux ARM64 packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: hf-downloader-linux-arm64-${{ github.ref_name }}
+          path: |
+            dist/*linux-arm64.AppImage
+            dist/*_arm64.deb
+          if-no-files-found: error

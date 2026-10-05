@@ -19,6 +19,14 @@ function unitToBytes(value, unit) {
   return n;
 }
 
+function speedLimitToBytes(value) {
+  const match = String(value ?? '0').trim().match(/^(\d+(?:\.\d+)?)\s*([KMG]?)(?:B|iB)?$/i);
+  if (!match) throw new Error(`Invalid download speed limit: ${value}`);
+  const bytes = Math.round(unitToBytes(match[1], `${match[2]}B`));
+  if (!Number.isSafeInteger(bytes)) throw new Error(`Invalid download speed limit: ${value}`);
+  return bytes;
+}
+
 function parseAria2Progress(text) {
   const lines = String(text || '').split(/\r?\n/).filter((line) => line.includes('[#') || line.includes('DL:'));
   const line = lines.at(-1) || '';
@@ -87,10 +95,14 @@ function classifyDownloadFailure(message, file) {
   return { httpStatus: status, nonRetryable: false, error: message };
 }
 
-function runAria2(file, options = {}) {
-  fs.mkdirSync(file.output_dir, { recursive: true });
-  const token = typeof options.getToken === 'function' ? options.getToken() : options.token;
-
+function buildAria2Args(file, options = {}, token = '') {
+  const maxDownloadSpeedBytes = speedLimitToBytes(options.maxDownloadSpeed);
+  const hasDownloadLimit = maxDownloadSpeedBytes > 0;
+  const lowestSpeedLimit = String(options.lowestSpeedLimit || '50K');
+  const lowestSpeedLimitBytes = speedLimitToBytes(lowestSpeedLimit);
+  const effectiveLowestSpeedLimit = hasDownloadLimit && maxDownloadSpeedBytes <= lowestSpeedLimitBytes
+    ? '0'
+    : lowestSpeedLimit;
   const args = [
     '-c',
     '--summary-interval=1',
@@ -99,18 +111,29 @@ function runAria2(file, options = {}) {
     '--max-tries=0',
     `--retry-wait=${options.retryWait || 10}`,
     `--timeout=${options.timeout || 60}`,
-    `--lowest-speed-limit=${options.lowestSpeedLimit || '50K'}`,
+    `--lowest-speed-limit=${effectiveLowestSpeedLimit}`,
     '-d',
     file.output_dir,
     '-o',
     file.output_name
   ];
 
+  if (hasDownloadLimit) {
+    args.push(`--max-download-limit=${maxDownloadSpeedBytes}`);
+  }
+
   if (token) {
     args.push(`--header=Authorization: Bearer ${token}`);
   }
 
   args.push(file.url);
+  return args;
+}
+
+function runAria2(file, options = {}) {
+  fs.mkdirSync(file.output_dir, { recursive: true });
+  const token = typeof options.getToken === 'function' ? options.getToken() : options.token;
+  const args = buildAria2Args(file, options, token);
 
   const binary = getAria2Binary();
   if (!binary) {
@@ -160,6 +183,8 @@ function runAria2(file, options = {}) {
 
 module.exports = {
   runAria2,
+  buildAria2Args,
+  speedLimitToBytes,
   maskToken,
   parseAria2Progress,
   classifyDownloadFailure

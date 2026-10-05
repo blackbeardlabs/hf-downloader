@@ -4,6 +4,28 @@ All notable changes to HF Downloader will be tracked here.
 
 ## Unreleased
 
+## 1.4.0 - 2026-10-05
+
+### Added
+
+- Added a persisted maximum download speed setting with K/M/G units and an unlimited option. Changing the limit resumes the active partial download with the new cap.
+
+## 1.3.5 - 2026-10-05
+
+### Added
+
+- Added a reusable native Ubuntu 24.04 ARM64 GitHub Actions template with architecture checks and an Electron startup smoke test. It is stored outside `.github/workflows/` so repository-only credentials can push it without workflow permission.
+
+### Changed
+
+- Linux AppImages now use the static AppImage runtime, so ARM64 systems such as NVIDIA DGX Spark no longer need the legacy FUSE 2 library.
+- Linux ARM64 release artifacts are built on a native ARM64 Linux runner to ensure `better-sqlite3` is packaged for the correct operating system and architecture.
+- ARM64 artifact names now include `linux-arm64` for AppImages and `arm64` for Debian packages.
+
+### Fixed
+
+- Fixed Electron AppImage startup on Ubuntu 24.04 systems that restrict unprivileged user namespaces by using the runtime's automatic sandbox compatibility fallback.
+
 
 ## 1.3.4 - 2026-06-29
 

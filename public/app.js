@@ -648,6 +648,7 @@ function filterHfPreview() {
 }
 
 function fillSettingsForm(policy) {
+  settingsForm.maxDownloadSpeed.value = policy.maxDownloadSpeed;
   settingsForm.autoRestartEnabled.checked = policy.autoRestartEnabled;
   settingsForm.applyRules.value = policy.behavior.applyRules;
   settingsForm.lowSpeedEnabled.checked = policy.rules.lowSpeed.enabled;
@@ -680,6 +681,7 @@ function modelRootsFromSettingsForm() {
 
 function policyFromSettingsForm() {
   return {
+    maxDownloadSpeed: settingsForm.maxDownloadSpeed.value,
     autoRestartEnabled: settingsForm.autoRestartEnabled.checked,
     behavior: {
       applyRules: settingsForm.applyRules.value
