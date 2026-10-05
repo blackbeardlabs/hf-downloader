@@ -4,6 +4,12 @@ All notable changes to HF Downloader will be tracked here.
 
 ## Unreleased
 
+## 1.4.1 - 2026-10-05
+
+### Fixed
+
+- `npm run dist:all` now builds macOS, Windows x64, Linux x64, and Linux ARM64 releases sequentially, forces a clean native-module rebuild for every target, and verifies the packaged `better-sqlite3` binary after each build, preventing native modules from one platform leaking into another platform's package.
+
 ## 1.4.0 - 2026-10-05
 
 ### Added

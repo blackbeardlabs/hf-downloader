@@ -1,6 +1,6 @@
 {
   "name": "hf-downloader",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Local Hugging Face and URL download manager using aria2c",
   "author": "blackbeardlabs",
   "license": "MIT",
@@ -17,7 +17,7 @@
     "dist:win": "electron-builder --win nsis portable --x64",
     "dist:linux": "electron-builder --linux deb AppImage --x64",
     "dist:linux:arm64": "electron-builder --linux deb AppImage --arm64",
-    "dist:all": "electron-builder --mac --win --linux"
+    "dist:all": "node scripts/build-all.js"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.2.0",

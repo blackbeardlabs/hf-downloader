@@ -259,26 +259,22 @@ Run the desktop app during development:
 npm run electron
 ```
 
-Build release artifacts on the target operating system. `better-sqlite3` is native, so release-quality packages should not be cross-built across operating systems:
+Build an individual release target:
 
 ```bash
 npm run dist:mac      # macOS .dmg
 npm run dist:win      # Windows x64 .exe installer + portable
 npm run dist:linux    # Linux x64 .deb + .AppImage
-npm run dist:all      # all of the above
+npm run dist:linux:arm64 # Linux ARM64 .deb + .AppImage
 ```
 
-Or request all configured targets at once:
+On macOS, build every configured release target at once:
 
 ```bash
 npm run dist:all
 ```
 
-For Linux ARM64:
-
-```bash
-npm run dist:linux:arm64
-```
+The all-target build runs macOS, Windows x64, Linux x64, and Linux ARM64 sequentially. It clears the previously generated `better-sqlite3` build before each target so Electron Builder cannot reuse a same-architecture binary from another operating system. After each target it checks that the packaged native module matches the intended operating system and CPU architecture. The command stops immediately if a build or native-module check fails, then restores the local Node.js native module so normal development commands continue to work.
 
 Configured targets:
 
@@ -293,7 +289,7 @@ Packaging notes:
 - Packaging with electron-builder requires Node.js 22.12 or newer; running the app from source continues to support Node.js 20 or newer.
 - `aria2c` must either be bundled per platform or detected as a system dependency.
 - Current implementation detects system `aria2c`; bundling platform-specific `aria2c` binaries can be added later for a smoother release.
-- `better-sqlite3` is native. `npm start` rebuilds for Node.js. `npm run electron` and `npm run dist:mac` rebuild for the local Electron runtime. Build release artifacts on their target operating system and architecture; the ARM64 workflow template is configured for native Linux ARM64.
+- `better-sqlite3` is native. `npm start` rebuilds it for Node.js, while Electron packaging rebuilds it for each target. `npm run dist:all` deliberately packages targets sequentially and validates the native binary to prevent cross-platform rebuild races. Release artifacts should still be launch-tested on their target operating systems; the ARM64 workflow template builds and smoke-tests Linux ARM64 natively.
 - macOS `.dmg` signing/notarization requires Apple Developer tooling for a polished public release.
 - Windows signing is optional for testing but useful for reducing security warnings.
 
